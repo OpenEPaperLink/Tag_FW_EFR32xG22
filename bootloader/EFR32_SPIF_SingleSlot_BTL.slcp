@@ -1,0 +1,55 @@
+# Silicon Labs Project Configuration Tools: slcp, v0, Component selection file.
+project_name: EFR32_SPIF_SingleSlot_BTL
+label: EFR32_SPIF_SingleSlot_BTL
+description: |
+  This sample configuration of the Gecko bootloader configures the bootloader to use an external SPI flash to store firmware update images. The SPI flash type is detected automatically by querying the SFDP parameter table present inside the flash memory. The storage configuration is set up to store a single firmware update image at a time, in a single storage slot. The storage slot is configured to start at address 0x0 of the SPI flash, and have a size of 236 kB. This can be configured on the "Storage" tab.
+category: Example|Bootloader
+filter:
+- name: Device Type
+  value: [SoC]
+- name: MCU
+  value: [Bootloader]
+- name: Project Difficulty
+  value: [Advanced]
+package: bootloader
+quality: production
+readme:
+- {path: readme.md}
+tag: ['hardware:component:memory:spi']
+sdk: {id: gecko_sdk, version: 4.4.1}
+toolchain_settings: []
+include:
+- path: ''
+  file_list:
+  - {path: bootloader_pinout.h}
+
+component:
+- {id: EFR32BG22C224F512IM40}
+- {id: bootloader_aes_sha_ecdsa}
+- {id: bootloader_common_storage_single}
+- {id: bootloader_compression_lzma}
+- {id: bootloader_core}
+- {id: bootloader_crc}
+- {id: bootloader_debug}
+- {id: bootloader_delay_driver}
+- {id: bootloader_image_parser_nonenc}
+- {id: bootloader_spi_controller_driver}
+- {id: bootloader_spiflash_storage_sfdp}
+- {id: bootloader_token_management}
+configuration:
+- {name: BTL_STORAGE_BASE_ADDRESS, value: '0'}
+- {name: SLOT0_ENABLE, value: '1'}
+- {name: SLOT0_START, value: '0'}
+- {name: SLOT0_SIZE, value: '241664'}
+config_file:
+  - path: btl_spi_controller_usart_driver_cfg.h
+    override:
+      component: bootloader_spi_controller_usart_driver
+      file_id: btl_spi_controller_usart_driver_cfg
+define:
+  - name: IS_BOOTLOADER
+    value: "1"
+ui_hints:
+  highlight:
+  - {path: readme.md, focus: true}
+

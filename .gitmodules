@@ -1,0 +1,6 @@
+[submodule "firmware/shared"]
+	path = firmware/shared
+	url = git@github.com:OpenEPaperLink/Shared_OEPL_Definitions.git
+[submodule "firmware/common"]
+	path = firmware/common
+	url = git@github.com:OpenEPaperLink/Shared_Tag_CPP_Libraries.git
