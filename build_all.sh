@@ -19,6 +19,6 @@ for filename in bootloader/variant_binaries/*.s37; do
   commander convert -o ./full_binaries/v$THIS_VER/$(basename "$filename" .s37)_FULL_v$THIS_VER.s37 $filename firmware/firmware.s37
 done
 
-mkdir ./ota_file
+mkdir ./ota_files
 THIS_EDITION=$(cat firmware/fwid.bin)
-commander gbl create ./ota_files/upgrade_"$THIS_EDITION"_v"$THIS_VER".gbl.bin --app firmware/firmware.s37 --compress lzma --metadata firmware/fwid.bin
+commander gbl create ./ota_files/upgrade_"$THIS_EDITION"_v"$THIS_VER".ota.bin --app firmware/firmware.s37 --compress lzma --metadata firmware/fwid.bin
