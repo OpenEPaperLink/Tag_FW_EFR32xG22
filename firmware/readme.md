@@ -27,6 +27,8 @@ For flashing firmware:
 - [Simplicity Commander](https://www.silabs.com/developers/simplicity-studio/simplicity-commander) or a debug probe of your choice with support for EFR32BG22
 - The correct wiring between your debug probe and your device's debug port.
 
+Don't forget to initialize and/or update the submodules after each checkout!
+
 ### Building firmware
 
 #### Native build
