@@ -1,12 +1,15 @@
 # EFR32xG22_OEPL
 
+## Preface
+This software is a side project, driven by spare time and depending on motivation. As such, it comes with no guarantee about future support whatsoever, but any contributions made to it will be highly welcome.
+
 ## License
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (same license as parent project) for files not taken/modified from the Silicon Labs SDK. Those files have a separate license header inside the file (mostly Zlib).
 
 ## Introduction
 
 This project aims to provide an implementation of [OEPL](https://openepaperlink.de/)
-as replacement firmware for ESL tags built around the Silicon Labs EFR32xG22 chip.
+as replacement firmware for ESL tags built around the Silicon Labs EFR32xG22 (MG22/FG22/BG22) SoC.
 
 ## Development
 
@@ -15,7 +18,7 @@ as replacement firmware for ESL tags built around the Silicon Labs EFR32xG22 chi
 For building directly from your own environment:
 - A local install of [Simplicity Studio](https://www.silabs.com/developers/simplicity-studio)
   with tools and SDK installed for the 32-bit product family. This project currently
-  requires GSDK version 4.4.1.
+  builds with GSDK version 4.4.1.
 - A local install of Silicon Labs [SLC-CLI](https://docs.silabs.com/simplicity-studio-5-users-guide/latest/ss-5-users-guide-tools-slc-cli/02-installation)
   and its dependencies (Java runtime).
 - make or cmake

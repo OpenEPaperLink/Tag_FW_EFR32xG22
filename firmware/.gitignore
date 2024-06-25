@@ -1,0 +1,10 @@
+GNU ARM */*
+build/*
+EFR32xG22_OEPL_cmake/*
+*.slps
+*.Makefile
+*.mak
+vscode.conf
+autogen/*
+config/*
+out/*
