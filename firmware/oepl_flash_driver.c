@@ -144,6 +144,7 @@ static void teardown_spi(void)
 
   if(cfg->flash->EN.port != gpioPortInvalid) {
     GPIO_PinModeSet(cfg->flash->EN.port, cfg->flash->EN.pin, gpioModeInputPull, cfg->flash->EN.idle_state);
+    GPIO_PinModeSet(cfg->flash->nCS.port, cfg->flash->nCS.pin, gpioModeInput, 1);
   }
 }
 

@@ -37,5 +37,6 @@ void storage_customShutdown(void)
 
 #if defined(SL_EXTFLASH_EN_PORT)
   GPIO_PinModeSet(SL_EXTFLASH_EN_PORT, SL_EXTFLASH_EN_PIN, gpioModeInputPull, 1);
+  GPIO_PinModeSet(SL_USART_EXTFLASH_CS_PORT, SL_USART_EXTFLASH_CS_PIN, gpioModeInput, 1);
 #endif
 }
