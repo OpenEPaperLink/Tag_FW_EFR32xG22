@@ -119,7 +119,7 @@ void oepl_display_driver_common_activate(void)
 
   // Start with powering the display
   if(cfg->display->enable.port != gpioPortInvalid) {
-    GPIO_PinModeSet(cfg->display->enable.port, cfg->display->enable.pin, gpioModePushPull, ~cfg->display->enable.idle_state);
+    GPIO_PinModeSet(cfg->display->enable.port, cfg->display->enable.pin, gpioModePushPull, cfg->display->enable.idle_state ? 0 : 1);
   }
 
   // Manual CS control, set CS pin mode

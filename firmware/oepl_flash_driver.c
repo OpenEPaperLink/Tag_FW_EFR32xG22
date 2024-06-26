@@ -89,7 +89,7 @@ static void setup_spi(void)
   spi_init.csControl = spidrvCsControlApplication;
 
   if(cfg->flash->EN.port != gpioPortInvalid) {
-    GPIO_PinModeSet(cfg->flash->EN.port, cfg->flash->EN.pin, gpioModePushPull, ~cfg->flash->EN.idle_state);
+    GPIO_PinModeSet(cfg->flash->EN.port, cfg->flash->EN.pin, gpioModePushPull, cfg->flash->EN.idle_state ? 0 : 1);
   }
 
   GPIO_PinModeSet(cfg->flash->nCS.port, cfg->flash->nCS.pin, gpioModePushPull, 1);
