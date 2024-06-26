@@ -814,7 +814,7 @@ void oepl_radio_process(void)
           // Go to next iteration of the poll or idle
           idle_radio();
           if(current_state_data.blockreq.retries > 0) {
-            rx_state = AWAIT_BLOCKREQ_ACK;
+            rx_state = AWAIT_BLOCK;
             current_state_data.blockreq.retries--;
             oepl_radio_request_datablock(current_state_data.blockreq.requested_block);
           } else {
