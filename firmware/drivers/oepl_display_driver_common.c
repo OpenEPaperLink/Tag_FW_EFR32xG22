@@ -133,7 +133,7 @@ void oepl_display_driver_common_activate(void)
   GPIO_PinModeSet(cfg->display->nRST.port, cfg->display->nRST.pin, gpioModePushPull, 1);
 
   // Configure busy as input and register interrupt
-  GPIO_PinModeSet(cfg->display->BUSY.port, cfg->display->BUSY.pin, gpioModeInputPullFilter, 0);
+  GPIO_PinModeSet(cfg->display->BUSY.port, cfg->display->BUSY.pin, gpioModeInput, 1);
   unsigned int interrupt = GPIOINT_CallbackRegisterExt(
       cfg->display->BUSY.pin,
       busyint_cb,
