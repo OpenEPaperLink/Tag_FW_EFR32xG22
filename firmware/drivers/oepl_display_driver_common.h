@@ -81,9 +81,6 @@ void oepl_display_driver_common_instruction_with_data_multi(uint8_t opcode, cons
 void oepl_display_driver_common_data(const uint8_t* data_buffer, size_t data_len, bool keep_cs_low);
 void oepl_display_driver_common_data_multi(const uint8_t* data_buffer, size_t data_len, bool keep_cs_low, uint8_t cs_mask);
 void oepl_display_driver_common_dataread(uint8_t* data_buffer, size_t data_len, bool keep_cs_low);
-void oepl_display_driver_common_transaction_done(void);
-void oepl_display_driver_common_transaction_start_multi(uint8_t cs_mask);
-void oepl_display_driver_common_transaction_done_multi(uint8_t cs_mask);
 
 void oepl_display_scan_frame(uint8_t* xbuf, size_t bufsize, size_t xstart, size_t xbytes, size_t ystart, size_t ylines, int color, bool mirrorX, bool mirrorY);
 void oepl_display_scan_frame_async(uint8_t* xbuf, size_t bufsize, size_t xstart, size_t xbytes, size_t ystart, size_t ylines, int color, bool mirrorX, bool mirrorY, oepl_display_driver_common_callback_t cb_done);

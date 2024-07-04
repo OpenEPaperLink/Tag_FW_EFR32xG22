@@ -113,6 +113,36 @@ void oepl_display_driver_common_init(void)
   GPIO_PinModeSet(cfg->display->nRST.port, cfg->display->nRST.pin, gpioModeInputPull, 0);
 }
 
+static void _assert_cs(uint8_t cs_mask)
+{
+  if(cs_mask & CS_LEADER) {
+    GPIO_PinOutClear(cfg->display->nCS.port, cfg->display->nCS.pin);
+  }
+  if((cs_mask & CS_FOLLOWER) && cfg->display->nCS2.port != gpioPortInvalid) {
+    GPIO_PinOutClear(cfg->display->nCS2.port, cfg->display->nCS2.pin);
+  }
+}
+
+static void _deassert_cs(uint8_t cs_mask)
+{
+  if(cs_mask & CS_LEADER) {
+    GPIO_PinOutSet(cfg->display->nCS.port, cfg->display->nCS.pin);
+  }
+  if((cs_mask & CS_FOLLOWER) && cfg->display->nCS2.port != gpioPortInvalid) {
+    GPIO_PinOutSet(cfg->display->nCS2.port, cfg->display->nCS2.pin);
+  }
+}
+
+static void _assert_data(void)
+{
+  GPIO_PinOutSet(cfg->display->DC.port, cfg->display->DC.pin);
+}
+
+static void _assert_command(void)
+{
+  GPIO_PinOutClear(cfg->display->DC.port, cfg->display->DC.pin);
+}
+
 void oepl_display_driver_common_activate(void)
 {
   oepl_display_driver_common_init();
@@ -226,11 +256,12 @@ void oepl_display_driver_common_instruction_with_data(uint8_t opcode, const uint
 
 void oepl_display_driver_common_instruction_with_data_multi(uint8_t opcode, const uint8_t* data_buffer, size_t data_len, bool keep_cs_low, uint8_t cs_mask)
 {
-  oepl_display_driver_common_transaction_start_multi(cs_mask);
+  _assert_command();
+  _assert_cs(cs_mask);
   
   SPIDRV_MTransmitB(handle, &opcode, 1);
 
-  GPIO_PinOutSet(cfg->display->DC.port, cfg->display->DC.pin);
+  _assert_data();
 
   if(data_len > 0) {
     if(cs_mask & CS_LEADER) {
@@ -252,7 +283,7 @@ void oepl_display_driver_common_instruction_with_data_multi(uint8_t opcode, cons
   }
 
   if(!keep_cs_low) {
-    oepl_display_driver_common_transaction_done_multi(cs_mask);
+    _deassert_cs(cs_mask);
   }
 }
 
@@ -263,10 +294,13 @@ void oepl_display_driver_common_data(const uint8_t* data_buffer, size_t data_len
 
 void oepl_display_driver_common_data_multi(const uint8_t* data_buffer, size_t data_len, bool keep_cs_low, uint8_t cs_mask)
 {
+  _assert_data();
+  _assert_cs(cs_mask);
+
   SPIDRV_MTransmitB(handle, data_buffer, data_len);
 
   if(!keep_cs_low) {
-    oepl_display_driver_common_transaction_done();
+    _deassert_cs(cs_mask);
   }
 }
 
@@ -275,43 +309,17 @@ void oepl_display_driver_common_dataread(uint8_t* data_buffer, size_t data_len, 
   cfg->display->usart->CTRL_SET = USART_CTRL_LOOPBK_ENABLE;
   cfg->display->usart->CMD = USART_CMD_TXTRIEN;
 
+  _assert_data();
+  _assert_cs(CS_LEADER);
+
   SPIDRV_MTransferB(handle, data_buffer, data_buffer, data_len);
 
   cfg->display->usart->CTRL_CLR = USART_CTRL_LOOPBK_ENABLE;
   cfg->display->usart->CMD = USART_CMD_TXTRIDIS;
 
   if(!keep_cs_low) {
-    oepl_display_driver_common_transaction_done();
+    _deassert_cs(CS_LEADER);
   }
-}
-
-void oepl_display_driver_common_transaction_done(void)
-{
-  oepl_display_driver_common_transaction_done_multi(CS_LEADER);
-}
-
-void oepl_display_driver_common_transaction_start_multi(uint8_t cs_mask)
-{
-  if(cs_mask & CS_LEADER) {
-    GPIO_PinOutClear(cfg->display->nCS.port, cfg->display->nCS.pin);
-  }
-  if((cs_mask & CS_FOLLOWER) && cfg->display->nCS2.port != gpioPortInvalid) {
-    GPIO_PinOutClear(cfg->display->nCS2.port, cfg->display->nCS2.pin);
-  }
-
-  GPIO_PinOutClear(cfg->display->DC.port, cfg->display->DC.pin);
-}
-
-void oepl_display_driver_common_transaction_done_multi(uint8_t cs_mask)
-{
-  if(cs_mask & CS_LEADER) {
-    GPIO_PinOutSet(cfg->display->nCS.port, cfg->display->nCS.pin);
-  }
-  if((cs_mask & CS_FOLLOWER) && cfg->display->nCS2.port != gpioPortInvalid) {
-    GPIO_PinOutSet(cfg->display->nCS2.port, cfg->display->nCS2.pin);
-  }
-
-  GPIO_PinOutClear(cfg->display->DC.port, cfg->display->DC.pin);
 }
 
 void oepl_display_scan_frame(uint8_t* xbuf, size_t bufsize, size_t xstart, size_t xbytes, size_t ystart, size_t ylines, int color, bool mirrorX, bool mirrorY)
@@ -344,12 +352,11 @@ void oepl_display_scan_frame_multi(uint8_t* xbuf, size_t bufsize, size_t xstart,
     } else {
       outbuf = &xbuf[xstart];
     }
-    oepl_display_driver_common_data_multi(outbuf, xbytes, true, cs_mask);
+    oepl_display_driver_common_data_multi(outbuf, xbytes, false, cs_mask);
   }
 
   free(swapbuf);
 
-  oepl_display_driver_common_transaction_done();
 }
 
 void oepl_display_scan_frame_async(uint8_t* xbuf, size_t bufsize, size_t xstart, size_t xbytes, size_t ystart, size_t ylines, int color, bool mirrorX, bool mirrorY, oepl_display_driver_common_callback_t cb_done)
@@ -495,20 +502,14 @@ static void spicb(struct SPIDRV_HandleData *handle, Ecode_t transferStatus, int 
 {
   if(scan_parameters.cur_y >= scan_parameters.ystart + scan_parameters.ylines) {
     // We're done
-    oepl_display_driver_common_transaction_done();
+    _deassert_cs(scan_parameters.cs_mask);
     scan_parameters.buf = NULL;
     cb_after_scan(SCAN_COMPLETE);
     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
   }
 
-  GPIO_PinOutSet(cfg->display->DC.port, cfg->display->DC.pin);
-
-  if(scan_parameters.cs_mask & CS_LEADER) {
-    GPIO_PinOutClear(cfg->display->nCS.port, cfg->display->nCS.pin);
-  }
-  if((scan_parameters.cs_mask & CS_FOLLOWER) && cfg->display->nCS2.port != gpioPortInvalid) {
-    GPIO_PinOutClear(cfg->display->nCS2.port, cfg->display->nCS2.pin);
-  }
+  _assert_data();
+  _assert_cs(scan_parameters.cs_mask);
 
   // Todo: check whether this is actually safe to do in IRQ
   memset(scan_parameters.buf, 0, scan_parameters.bufsize);
