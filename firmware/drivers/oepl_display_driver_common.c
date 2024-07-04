@@ -400,6 +400,17 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
 {
   uint32_t start_ticks = sl_sleeptimer_get_tick_count();
   cb_after_busy = busywait_internal_cb;
+  switch(cfg->display->BUSY.port) {
+    case gpioPortA:
+      break;
+    case gpioPortB:
+      break;
+    default:
+      // Other ports can't generate interrupts from low power modes
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+      break;
+  }
+
   GPIO_IntClear(1<<(cfg->display->BUSY.pin));
   GPIO_IntEnable(1<<(cfg->display->BUSY.pin));
   busywait_timer_expired = false;
@@ -423,6 +434,16 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
   GPIO_IntDisable(1<<(cfg->display->BUSY.pin));
   GPIO_IntClear(1<<(cfg->display->BUSY.pin));
   cb_after_busy = NULL;
+  switch(cfg->display->BUSY.port) {
+    case gpioPortA:
+      break;
+    case gpioPortB:
+      break;
+    default:
+      // Other ports can't generate interrupts from low power modes
+      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+      break;
+  }
 
   uint32_t ms = sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count() - start_ticks);
   DPRINTF("Display refreshed in %d seconds\n", ms/1000);

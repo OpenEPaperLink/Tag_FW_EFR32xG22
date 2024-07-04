@@ -260,7 +260,7 @@ static const oepl_efr32xg22_displayconfig_t displayconfig_modchip_hd150 =
   .DC = {.port = gpioPortB, .pin = 1},
   .BUSY = {.port = gpioPortD, .pin = 0},
   .nRST = {.port = gpioPortB, .pin = 2},
-  .enable = {.port = gpioPortA, .pin = 0, .idle_state = 0},
+  .enable = {.port = gpioPortA, .pin = 3, .idle_state = 0},
   .type = EPD_HD150
 };
 

@@ -201,9 +201,10 @@ void oepl_hw_init(void)
 
   // Setup flash
   if(tagconfig->hwtype == BRD4402B_WSTK ||
-     tagconfig->hwtype == BRD4402B_WSTK_EPD) {
+     tagconfig->hwtype == BRD4402B_WSTK_EPD ||
+     tagconfig->hwtype == MODCHIP_HD150) {
     is_devkit = true;
-    oepl_hw_flash_deepsleep();
+    //oepl_hw_flash_deepsleep();
   }
   
   // Setup pins
@@ -553,7 +554,7 @@ static void gpioint_cb(uint8_t pin, void* ctx)
   if(ctx == NULL) {
     return;
   }
-  
+
   if(button1_hwval && (pin == (button1_hwval & 0xF))) {
     ((oepl_hw_gpio_cb_t)ctx)(BUTTON_1, RISING);
   }

@@ -80,7 +80,7 @@ static void display_draw(void)
   uint8_t* linebuf = malloc(params->x_res_effective / 8);
 
   DPRINTF("Black:\n");
-  oepl_display_driver_common_instruction(0x10, true);
+  oepl_display_driver_common_instruction(0x10, false);
   oepl_display_scan_frame(
     // Buffer + buffer size
     linebuf, params->x_res_effective/8,
@@ -96,7 +96,7 @@ static void display_draw(void)
 
   if(params->num_colors > 2) {
     DPRINTF("RED:\n");
-    oepl_display_driver_common_instruction(0x13, true);
+    oepl_display_driver_common_instruction(0x13, false);
     oepl_display_scan_frame(
       // Buffer + buffer size
       linebuf, params->x_res_effective/8,
@@ -136,7 +136,7 @@ static void display_sleep(void)
   EMIT_INSTRUCTION_STATIC_DATA(0x50, {0xF7});
   oepl_display_driver_wait(10);
   EMIT_INSTRUCTION_NO_DATA(0x02);
-  oepl_display_driver_wait(10);
+  oepl_display_driver_wait_busy(10, true);
 
   oepl_display_driver_common_deactivate();
 }
@@ -167,7 +167,7 @@ static void display_reinit(void)
   EMIT_INSTRUCTION_STATIC_DATA(0xF8, {0xB8, 0x80});
   EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
   EMIT_INSTRUCTION_STATIC_DATA(0x26, {0x0F});
-  EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x03});
+  EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07});
   EMIT_INSTRUCTION_STATIC_DATA(0x61, {0x02, 0x88, 0x01, 0xE0});
   EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x77});
   EMIT_INSTRUCTION_STATIC_DATA(0xE0, {0x02});
