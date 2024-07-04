@@ -219,7 +219,7 @@ configuration:
 - {name: SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_ACCEPT_ACK_FRAME_ENABLE, value: '0'}
 - {name: SL_RAIL_UTIL_PTI_MODE, value: 'RAIL_PTI_MODE_DISABLED'}
 - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION, value: '0'}
-- {name: SL_APPLICATION_VERSION, value: '2'}
+- {name: SL_APPLICATION_VERSION, value: '3'}
 config_file:
   - path: sl_iostream_eusart_euart_debug_config.h
     override:
