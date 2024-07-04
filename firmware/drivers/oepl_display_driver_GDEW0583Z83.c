@@ -6,7 +6,7 @@
 #include "oepl_drawing_capi.h"
 #include "sl_udelay.h"
 
-// For debugprint
+// For debugprint and temperature
 #include "oepl_hw_abstraction.h"
 
 #include <string.h>
@@ -172,7 +172,12 @@ static void display_reinit(void)
   // Diverging from the captured '0x77' here to invert the meaning of red bit
   EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x44});
   EMIT_INSTRUCTION_STATIC_DATA(0xE0, {0x02});
-  EMIT_INSTRUCTION_STATIC_DATA(0xE5, {0x1A});
+  int8_t temperature;
+  if(!oepl_hw_get_temperature(&temperature)) {
+    temperature = 25;
+  }
+  uint8_t temp = temperature < 0 ? 0 : temperature;
+  EMIT_INSTRUCTION_VAR_DATA(0xE5, {temp});
 
   oepl_display_driver_wait(2);
 }
