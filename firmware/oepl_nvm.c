@@ -185,8 +185,12 @@ oepl_nvm_status_t oepl_nvm_factory_reset(uint8_t hwid)
   nvm3_writeData(nvm3_defaultHandle, NVM3_OBJECT_ID_CONFIG, &devconfig, sizeof(devconfig));
   DPRINTF("Stored new devconfig\n");
 
-  nvm3_writeData(nvm3_defaultHandle, NVM3_OBJECT_ID_SETTINGS_START + OEPL_RAW_TAGSETTINGS, &oepl_default_tagsettings, sizeof(oepl_default_tagsettings));
-  DPRINTF("Stored default tagconfig\n");
+  function_status = oepl_nvm_setting_set_default(OEPL_RAW_TAGSETTINGS);
+  if(function_status == NVM_SUCCESS) {
+    DPRINTF("Stored default tagconfig\n");
+  } else {
+    DPRINTF("Didn't manage to set tagconfig?\n");
+  }
 
 done:
   if(status == BOOTLOADER_OK) {
