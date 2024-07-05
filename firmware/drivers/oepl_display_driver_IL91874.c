@@ -80,7 +80,7 @@ static void display_draw(void);
 
 static void display_reset(void);
 static void display_reinit(void);
-static void display_clear_frame(void);
+//static void display_clear_frame(void);
 static void display_sleep(void);
 static void display_refresh_and_wait(void);
 
@@ -205,6 +205,7 @@ static void display_reset(void)
   oepl_display_driver_common_pulse_reset(10, 200, 200);
 }
 
+/*
 static void display_clear_frame(void)
 {
   const uint8_t window_data[] = {0,0,0,0,EPD_WIDTH >> 8, EPD_WIDTH & 0xFF, EPD_HEIGHT >> 8, EPD_HEIGHT & 0xFF};
@@ -214,9 +215,8 @@ static void display_clear_frame(void)
   );
   sl_udelay_wait(2000);
   for(size_t i = 0; i < EPD_WIDTH * EPD_HEIGHT / 8; i++) {
-    oepl_display_driver_common_data(&lut_20_vcomDC[0], 1, true);
+    oepl_display_driver_common_data(&lut_20_vcomDC[0], 1, i < (EPD_WIDTH * EPD_HEIGHT / 8 - 1));
   }
-  oepl_display_driver_common_transaction_done();
   sl_udelay_wait(2000);
 
   oepl_display_driver_common_instruction_with_data(
@@ -224,11 +224,11 @@ static void display_clear_frame(void)
   );
   sl_udelay_wait(2000);
   for(size_t i = 0; i < EPD_WIDTH * EPD_HEIGHT / 8; i++) {
-    oepl_display_driver_common_data(&lut_20_vcomDC[0], 1, true);
+    oepl_display_driver_common_data(&lut_20_vcomDC[0], 1, i < (EPD_WIDTH * EPD_HEIGHT / 8 - 1));
   }
-  oepl_display_driver_common_transaction_done();
   sl_udelay_wait(2000);
 }
+*/
 
 static void display_sleep(void)
 {

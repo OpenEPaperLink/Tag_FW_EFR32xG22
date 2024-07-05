@@ -117,6 +117,8 @@ sl_power_manager_on_isr_exit_t app_sleep_on_isr_exit(void)
 
 static void nfc_poll_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
 {
+  (void)handle;
+  (void)data;
   //GPIO_PinModeSet((nfcsda_hwval & 0x70) >> 4, nfcsda_hwval & 0xF, gpioModePushPull, 1);
   
   if((nfcfd_hwval & 0x70) == 0x20 ||
@@ -157,7 +159,9 @@ void oepl_hw_init(void)
 
   // Setup debugprint infrastructure
   extern sl_iostream_instance_info_t sl_iostream_instance_euart_debug_info;
+  #if SL_CATALOG_IOSTREAM_RTT_PRESENT
   extern sl_iostream_instance_info_t sl_iostream_instance_rtt_info;
+  #endif
   extern sl_iostream_instance_info_t sl_iostream_instance_swo_info;
 
   // Default to SWO

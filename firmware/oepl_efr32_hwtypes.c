@@ -1,4 +1,6 @@
 #include "oepl_efr32_hwtypes.h"
+#include "application_properties.h"
+#include "oepl-definitions.h"
 
 #define GPIO_UNUSED {.port = gpioPortInvalid, .pin = 0, .idle_state = 0}
 
@@ -296,7 +298,7 @@ static const oepl_efr32xg22_debugconfig_t debugconfig_modchip = {
 
 static const oepl_efr32xg22_tagconfig_t tagconfig_modchip_hd150 = {
   .hwtype = MODCHIP_HD150,
-  .oepl_hwid = 0x50,
+  .oepl_hwid = MODCHIP_HD150_BWR_58,
   .flash = &flashconfig_modchip,
   .display = &displayconfig_modchip_hd150,
   .gpio = &pinconfig_modchip,
@@ -323,8 +325,6 @@ static const oepl_efr32xg22_tagconfig_t* tagdb[] = {
   &tagconfig_modchip_hd150,
 };
 
-#include "application_properties.h"
-#include "oepl-definitions.h"
 const oepl_efr32xg22_tagconfig_t* oepl_efr32xg22_get_config(void)
 {
   const ApplicationProperties_t* app_p = *((const ApplicationProperties_t**) (13*4));

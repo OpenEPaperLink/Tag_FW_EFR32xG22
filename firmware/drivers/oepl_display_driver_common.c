@@ -343,7 +343,11 @@ void oepl_display_scan_frame_multi(uint8_t* xbuf, size_t bufsize, size_t xstart,
 
   for(size_t line = ystart; line < ystart + ylines; line++) {
     memset(xbuf, 0, bufsize);
-    C_renderDrawLine(xbuf, line, color);
+    if(mirrorY) {
+      C_renderDrawLine(xbuf, ystart + ylines - 1 - (line - ystart), color);
+    } else {
+      C_renderDrawLine(xbuf, line, color);
+    }
     if(mirrorX) {
       for(size_t i = 0; i < xbytes; i++) {
         swapbuf[xbytes - 1 - i] = SL_RBIT8(xbuf[xstart + i]);
@@ -473,6 +477,7 @@ void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t c
 // -----------------------------------------------------------------------------
 static void busyint_cb(uint8_t pin, void* ctx)
 {
+  (void)ctx;
   if(pin == cfg->display->BUSY.pin) {
     if(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) == pinstate_expected ? 1 : 0) {
       sl_sleeptimer_stop_timer(&busywait_timer_handle);
@@ -487,12 +492,15 @@ static void busyint_cb(uint8_t pin, void* ctx)
 }
 
 static void busywait_internal_cb(oepl_display_driver_common_event_t event) {
+  (void)event;
   // The only reason this exists is to trigger a system wakeup
   busywait_timer_expired = true;
 }
 
 static void busywait_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
 {
+  (void)handle;
+  (void)data;
   if(cb_after_busy) {
     cb_after_busy(BUSY_TIMEOUT);
   }
@@ -500,6 +508,8 @@ static void busywait_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
 
 static void spicb(struct SPIDRV_HandleData *handle, Ecode_t transferStatus, int itemsTransferred)
 {
+  (void)transferStatus;
+  (void)itemsTransferred;
   if(scan_parameters.cur_y >= scan_parameters.ystart + scan_parameters.ylines) {
     // We're done
     _deassert_cs(scan_parameters.cs_mask);
@@ -513,7 +523,11 @@ static void spicb(struct SPIDRV_HandleData *handle, Ecode_t transferStatus, int 
 
   // Todo: check whether this is actually safe to do in IRQ
   memset(scan_parameters.buf, 0, scan_parameters.bufsize);
-  C_renderDrawLine(scan_parameters.buf, scan_parameters.cur_y, scan_parameters.color);
+  if(scan_parameters.mirrorY) {
+    C_renderDrawLine(scan_parameters.buf, scan_parameters.ystart + scan_parameters.ylines - (scan_parameters.cur_y - scan_parameters.ystart), scan_parameters.color);
+  } else {
+    C_renderDrawLine(scan_parameters.buf, scan_parameters.cur_y, scan_parameters.color);
+  }
   if(scan_parameters.mirrorX) {
     for(size_t i = 0; i < scan_parameters.xbytes; i++) {
       scan_parameters.buf[scan_parameters.xstart + i] = SL_RBIT8(scan_parameters.buf[scan_parameters.xstart + i]);
