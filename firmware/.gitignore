@@ -8,3 +8,4 @@ vscode.conf
 autogen/*
 config/*
 out/*
+firmware.s37
