@@ -28,7 +28,7 @@
   - ~~UI overlay (display)~~
   - Custom mode (app)
   - ~~Low battery overlay (app)~~
-- Implement firmware version suffix
+- ~~Implement firmware version suffix~~
 - Implement dynamic tag declaration
 - Implement deepsleep wake cause detection (currently treated as reboot)
 - ~~Update readme~~

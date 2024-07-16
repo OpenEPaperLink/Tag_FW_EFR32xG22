@@ -767,7 +767,11 @@ uint16_t oepl_hw_get_swversion(void)
 
 const char* oepl_hw_get_swsuffix(void)
 {
-  return "Todo";
+#if defined(GIT_COMMIT_ID)
+  return GIT_COMMIT_ID;
+#else
+  return "Dev";
+#endif
 }
 
 bool oepl_hw_nfc_write_url(const uint8_t* url_buffer, size_t length)

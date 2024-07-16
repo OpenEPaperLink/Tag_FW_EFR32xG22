@@ -8,6 +8,8 @@ else
   DEFAULT_PATH=
 fi
 
+GIT_VERSION="$(git describe --abbrev=4 --dirty --always --tags --all --match releases/*)"
+
 GSDK_PATH=${GSDK_PATH:=$DEFAULT_PATH}
 
 rm -rf ./out
@@ -42,7 +44,7 @@ else
   sed -i 's/SL_IOSTREAM_EUSART_EUART_DEBUG_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION    1/SL_IOSTREAM_EUSART_EUART_DEBUG_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION    0/' config/sl_iostream_eusart_euart_debug_config.h
 fi
 
-make -f EFR32xG22_OEPL.Makefile -j8
+env C_DEFS=-DGIT_COMMIT_ID=\\\"${GIT_VERSION#tags/releases/}\\\" make -f EFR32xG22_OEPL.Makefile -j8
 retVal=$?
 if [ $retVal -ne 0 ]; then
     echo "Error building firmware"
