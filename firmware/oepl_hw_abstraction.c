@@ -24,7 +24,7 @@
 #include "sl_mx25_flash_shutdown.h"
 #include "sl_rail_util_pti_config.h"
 #include "oepl_efr32_hwtypes.h"
-#include <sl_iostream.h>
+#include <sl_iostream_handles.h>
 #include "sl_rail_util_init.h"
 #include "rail.h"
 
@@ -164,28 +164,37 @@ void oepl_hw_init(void)
   #endif
   extern sl_iostream_instance_info_t sl_iostream_instance_swo_info;
 
-  // Default to SWO
-  sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
-  
-  if(tagconfig->debug->type == DBG_SWO) {
-    sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
-  } else {
+  if(tagconfig->debug->type != DBG_SWO) {
     // Stop messing with the SWO pin as we may be reusing it somewhere else
     GPIO_DbgSWOEnable(false);
     GPIO_PinModeSet((GPIO_Port_TypeDef)GPIO_SWV_PORT, GPIO_SWV_PIN, gpioModeDisabled, 0);
+  }
+
+  if(tagconfig->debug->type != DBG_EUART) {
+    // Turn off EUART when not in use to avoid it taking control over pins it shouldn't
+    extern sl_iostream_uart_t *sl_iostream_uart_euart_debug_handle;
+    sl_iostream_uart_deinit(sl_iostream_uart_euart_debug_handle);
+  }
+
+  // Set the requested debug print output
+  switch(tagconfig->debug->type)
+  {
+    case DBG_SWO:
+      sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
+      break;
     #if SL_CATALOG_IOSTREAM_RTT_PRESENT
-    if(tagconfig->debug->type == DBG_RTT) {
+    case DBG_RTT:
       sl_iostream_set_system_default(sl_iostream_instance_rtt_info.handle);
-    } else
-    #endif 
-    if(tagconfig->debug->type == DBG_EUART) {
+      break;
+    #endif
+    case DBG_EUART:
       // Adjust the pinout for the EUART
       GPIO_PinModeSet(tagconfig->debug->output.euart.tx.port, tagconfig->debug->output.euart.tx.pin, gpioModePushPull, 1);
-      GPIO_PinModeSet(tagconfig->debug->output.euart.rx.port, tagconfig->debug->output.euart.rx.pin, gpioModeInput, 0);
 
       GPIO->EUARTROUTE->TXROUTE = (tagconfig->debug->output.euart.tx.port << _GPIO_EUART_TXROUTE_PORT_SHIFT)
                                 | (tagconfig->debug->output.euart.tx.pin << _GPIO_EUART_TXROUTE_PIN_SHIFT);
       if(tagconfig->debug->output.euart.rx.port != gpioPortInvalid) {
+        GPIO_PinModeSet(tagconfig->debug->output.euart.rx.port, tagconfig->debug->output.euart.rx.pin, gpioModeInput, 0);
         GPIO->EUARTROUTE->RXROUTE = (tagconfig->debug->output.euart.rx.port << _GPIO_EUART_RXROUTE_PORT_SHIFT)
                                   | (tagconfig->debug->output.euart.rx.pin << _GPIO_EUART_RXROUTE_PIN_SHIFT);
       }
@@ -195,12 +204,12 @@ void oepl_hw_init(void)
       }
 
       sl_iostream_set_system_default(sl_iostream_instance_euart_debug_info.handle);
-    } else {
+      break;
+    default:
       DPRINTF("Unrecognised debug output\n");
       while(1) {
         sl_power_manager_sleep();
       }
-    }
   }
 
   // Setup flash
@@ -786,7 +795,9 @@ static void deepsleep_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
     const oepl_efr32xg22_tagconfig_t* tagconfig = oepl_efr32xg22_get_config();
     if(tagconfig->debug && tagconfig->debug->type == DBG_EUART) {
       GPIO_PinModeSet(tagconfig->debug->output.euart.tx.port, tagconfig->debug->output.euart.tx.pin, gpioModeDisabled, 1);
-      GPIO_PinModeSet(tagconfig->debug->output.euart.rx.port, tagconfig->debug->output.euart.rx.pin, gpioModeDisabled, 1);
+      if(tagconfig->debug->output.euart.rx.port != gpioPortInvalid) {
+        GPIO_PinModeSet(tagconfig->debug->output.euart.rx.port, tagconfig->debug->output.euart.rx.pin, gpioModeDisabled, 1);
+      }
       if(tagconfig->debug->output.euart.enable.port != gpioPortInvalid) {
         GPIO_PinModeSet(tagconfig->debug->output.euart.enable.port, tagconfig->debug->output.euart.enable.pin, gpioModeDisabled, 1);
       }

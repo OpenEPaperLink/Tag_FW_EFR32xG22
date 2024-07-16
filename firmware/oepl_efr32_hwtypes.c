@@ -258,11 +258,11 @@ static const oepl_efr32xg22_displayconfig_t displayconfig_modchip_hd150 =
   .MISO = GPIO_UNUSED,
   .SCK = {.port = gpioPortB, .pin = 0},
   .nCS = {.port = gpioPortA, .pin = 0},
-  .nCS2 = {.port = gpioPortD, .pin = 1},
-  .DC = {.port = gpioPortB, .pin = 1},
-  .BUSY = {.port = gpioPortD, .pin = 0},
-  .nRST = {.port = gpioPortB, .pin = 2},
-  .enable = {.port = gpioPortA, .pin = 3, .idle_state = 0},
+  .nCS2 = {.port = gpioPortA, .pin = 3},
+  .DC = {.port = gpioPortD, .pin = 1},
+  .BUSY = {.port = gpioPortB, .pin = 2},
+  .nRST = {.port = gpioPortD, .pin = 0},
+  .enable = {.port = gpioPortA, .pin = 6, .idle_state = 0},
   .type = EPD_HD150
 };
 
@@ -270,8 +270,8 @@ static const oepl_efr32xg22_pinconfig_t pinconfig_modchip = {
   .gpio = GPIO_UNUSED,
   .nfc_fd = GPIO_UNUSED,
   .nfc_fd_em4wuval = 0,
-  .button1 = GPIO_UNUSED,
-  .button1_em4wuval = 0,
+  .button1 = {.port = gpioPortB, .pin = 1},
+  .button1_em4wuval = GPIO_IEN_EM4WUIEN3,
   .button2 = GPIO_UNUSED,
   .button2_em4wuval = 0
 };
@@ -288,7 +288,7 @@ static const oepl_efr32xg22_debugconfig_t debugconfig_modchip = {
   .output = {
     .euart = {
       .tx = {.port = gpioPortA, .pin = 5},
-      .rx = {.port = gpioPortA, .pin = 6},
+      .rx = GPIO_UNUSED,
       .rts = GPIO_UNUSED,
       .cts = GPIO_UNUSED,
       .enable = GPIO_UNUSED,
