@@ -336,6 +336,24 @@ void oepl_radio_init(oepl_radio_event_cb_t cb, uint8_t reason, uint8_t channel)
     DPRINTF("EUI %08x\n", rstat);
   }
 
+  // Random delay to ensure tags don't all spam the radio channel on boot
+  // when powered from the same power source
+  uint8_t ranbyte;
+  uint16_t ranlen = RAIL_GetRadioEntropy(sl_rail_util_get_handle(SL_RAIL_UTIL_HANDLE_INST0), &ranbyte, 1);
+
+  // random delay between 0 and 2550 ms
+  DPRINTF("Delaying radio by %dms\n", ranbyte * 10);
+  state_timer_expired = false;
+  sl_sleeptimer_start_timer_ms(&state_timer_handle,
+                               ranbyte * 10,
+                               state_timer_cb,
+                               NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+  while(!state_timer_expired) {
+    sl_power_manager_sleep();
+  }
+
+  state_timer_expired = false;
+
   // If we have a valid channel, try quick-resume
   for(size_t i = 0; i < sizeof(channel_list); i++) {
     if(channel_list[i] == channel) {
