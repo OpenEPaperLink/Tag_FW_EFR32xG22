@@ -457,7 +457,7 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
 
     displayparams->xres = solum_xres;
     displayparams->yres = solum_yres;
-    displayparams->have_thirdcolor = (solum_colortype & 0x01) != 0;
+    displayparams->have_thirdcolor = (solum_colortype == 0x01 || solum_colortype == 0x02);
     displayparams->have_fourthcolor = false;
 
     switch(solum_ctrltype) {
