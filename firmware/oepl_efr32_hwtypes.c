@@ -353,6 +353,8 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWR_16;
       case STYPE_SIZE_022:
         return SOLUM_M3_BWR_22;
+      case STYPE_SIZE_022_LITE:
+        return SOLUM_M3_BWR_22_LITE;
       case STYPE_SIZE_026:
         return SOLUM_M3_BWR_26;
       case STYPE_SIZE_029:
@@ -505,6 +507,10 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         displayparams->mirrorY = true;
         break;
       case STYPE_SIZE_022:
+        displayparams->swapXY = true;
+        displayparams->xoffset = 8;
+        break;
+      case STYPE_SIZE_022_LITE:
         displayparams->swapXY = true;
         displayparams->xoffset = 8;
         break;
