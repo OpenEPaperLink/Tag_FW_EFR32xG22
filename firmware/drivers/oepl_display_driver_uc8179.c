@@ -105,7 +105,7 @@ static void display_init(const oepl_display_parameters_t* display_params)
   }
 
   // Make local copy since we'll be using most of these
-  memcpy(params, display_params, sizeof(*display_params));
+  memcpy(params, display_params, sizeof(oepl_display_parameters_t));
 }
 
 static void display_draw(void)
