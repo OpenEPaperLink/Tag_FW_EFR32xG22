@@ -118,7 +118,7 @@ static void display_init(const oepl_display_parameters_t* display_params)
   }
 
   // Make local copy since we'll be using most of these
-  memcpy(params, display_params, sizeof(*display_params));
+  memcpy(params, display_params, sizeof(oepl_display_parameters_t));
 
   // Todo: Add pin definition for UC8159's onboard flash CS line
   oepl_hw_crash(DBG_DISPLAY, false, "UC8159 is not yet supported\n");
