@@ -343,11 +343,9 @@ void oepl_display_scan_frame_multi(uint8_t* xbuf, size_t bufsize, size_t xstart,
 
   for(size_t line = ystart; line < ystart + ylines; line++) {
     memset(xbuf, 0, bufsize);
-    if(mirrorY) {
-      C_renderDrawLine(xbuf, ystart + ylines - 1 - (line - ystart), color);
-    } else {
-      C_renderDrawLine(xbuf, line, color);
-    }
+    
+    C_renderDrawLine(xbuf, line, color);
+
     if(mirrorX) {
       for(size_t i = 0; i < xbytes; i++) {
         swapbuf[xbytes - 1 - i] = SL_RBIT8(xbuf[xstart + i]);
