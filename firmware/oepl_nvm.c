@@ -817,6 +817,7 @@ oepl_nvm_status_t oepl_nvm_get_image_raw_address(size_t img_idx, uint32_t* addre
 
 oepl_nvm_status_t oepl_nvm_get_image_by_hash(uint64_t md5, uint32_t size, size_t* img_idx, oepl_stored_image_hdr_t* metadata)
 {
+  DPRINTF("Looking for image with hash 0x%llx\n", md5);
   size_t num_slots, slot_size;
   oepl_nvm_status_t retval = oepl_nvm_get_num_img_slots(&num_slots, &slot_size);
   if(retval != NVM_SUCCESS) {
@@ -841,6 +842,7 @@ oepl_nvm_status_t oepl_nvm_get_image_by_hash(uint64_t md5, uint32_t size, size_t
 
 oepl_nvm_status_t oepl_nvm_get_image_by_type(uint8_t image_type, size_t* img_idx, size_t* seqno)
 {
+  DPRINTF("Looking for image with type 0x%x\n", image_type);
   size_t num_slots, slot_size, highest_seq = 0;
   bool found = false;
   oepl_nvm_status_t retval = oepl_nvm_get_num_img_slots(&num_slots, &slot_size);
@@ -855,7 +857,7 @@ oepl_nvm_status_t oepl_nvm_get_image_by_type(uint8_t image_type, size_t* img_idx
        nvm_status != ECODE_NVM3_ERR_KEY_NOT_FOUND) {
       return NVM_ERROR;
     }
-    if(imgmeta.image_type == image_type) {
+    if((imgmeta.image_type == image_type) && (nvm_status == ECODE_NVM3_OK)) {
       if(imgmeta.seqno >= highest_seq) {
         *img_idx = i;
         highest_seq = imgmeta.seqno;
@@ -864,6 +866,7 @@ oepl_nvm_status_t oepl_nvm_get_image_by_type(uint8_t image_type, size_t* img_idx
         }
       }
       found = true;
+      DPRINTF("Found at idx 0x%x", *img_idx);
     }
   }
 
@@ -885,6 +888,7 @@ oepl_nvm_status_t oepl_nvm_get_free_image_slot(size_t* img_idx, uint8_t image_ty
     Ecode_t nvm_status = nvm3_readData(nvm3_defaultHandle, NVM3_OBJECT_ID_IMAGE_METADATA_BASE + i, &imgmeta, sizeof(imgmeta));
     if(nvm_status == ECODE_NVM3_ERR_KEY_NOT_FOUND) {
       // Found a free slot, use it
+      DPRINTF("Image slot 0x%x unoccupied\n", i);
       *img_idx = i;
       return NVM_SUCCESS;
     } else if(nvm_status != ECODE_NVM3_OK) {
@@ -892,6 +896,7 @@ oepl_nvm_status_t oepl_nvm_get_free_image_slot(size_t* img_idx, uint8_t image_ty
       return NVM_ERROR;
     } else if(!imgmeta.is_valid) {
       // Clean up and release this slot back for use
+      DPRINTF("Image slot 0x%x not made valid, freeing it for use\n", i);
       oepl_nvm_erase_image(i);
       *img_idx = i;
       return NVM_SUCCESS;
@@ -910,6 +915,7 @@ oepl_nvm_status_t oepl_nvm_get_free_image_slot(size_t* img_idx, uint8_t image_ty
 
   if(found_candidate) {
     // Erase candidate to free up space for new one
+    DPRINTF("Image of type 0x%x has oldest seq 0x%x in slot 0x%x, freeing and reusing\n", image_type, candidate_seq, img_idx);
     *img_idx = candidate_idx;
     return oepl_nvm_erase_image(candidate_idx);
   }
@@ -920,6 +926,7 @@ oepl_nvm_status_t oepl_nvm_get_free_image_slot(size_t* img_idx, uint8_t image_ty
 
 oepl_nvm_status_t oepl_nvm_erase_image(size_t img_idx)
 {
+  DPRINTF("Erasing image at idx 0x%x\n", img_idx);
   size_t num_slots, slot_size;
   oepl_nvm_status_t retval = oepl_nvm_get_num_img_slots(&num_slots, &slot_size);
   if(retval != NVM_SUCCESS) {
@@ -965,6 +972,7 @@ oepl_nvm_status_t oepl_nvm_erase_image(size_t img_idx)
 
 oepl_nvm_status_t oepl_nvm_erase_image_cache(uint8_t image_type)
 {
+  DPRINTF("Erasing cached images of type 0x%x\n", image_type);
   size_t highest_idx, highest_seqno;
 
   oepl_nvm_status_t retval = oepl_nvm_get_image_by_type(image_type, &highest_idx, &highest_seqno);
@@ -990,8 +998,8 @@ oepl_nvm_status_t oepl_nvm_erase_image_cache(uint8_t image_type)
       return NVM_ERROR;
     } else if (i == highest_idx) {
       continue;
-    } else if(imgmeta.image_type == image_type) {
-      // Clean up and release this slot back for use
+    } else if((imgmeta.image_type == image_type) && (imgmeta.seqno != highest_seqno)) {
+      // Clean up and release this slot back for use, as it is not the most recent image
       retval = oepl_nvm_erase_image(i);
       if(retval != NVM_SUCCESS) {
         return retval;
@@ -1004,6 +1012,7 @@ oepl_nvm_status_t oepl_nvm_erase_image_cache(uint8_t image_type)
 
 oepl_nvm_status_t oepl_nvm_write_image_metadata(size_t img_idx, oepl_stored_image_hdr_t* metadata)
 {
+  DPRINTF("Writing metadata for image idx 0x%x\n", img_idx);
   size_t num_slots, slot_size;
   oepl_nvm_status_t retval = oepl_nvm_get_num_img_slots(&num_slots, &slot_size);
   if(retval != NVM_SUCCESS) {
@@ -1046,6 +1055,7 @@ oepl_nvm_status_t oepl_nvm_write_image_metadata(size_t img_idx, oepl_stored_imag
 
 oepl_nvm_status_t oepl_nvm_read_image_metadata(size_t img_idx, oepl_stored_image_hdr_t* metadata)
 {
+  DPRINTF("Requesting metadata for image at idx 0x%x\n", img_idx);
   size_t num_slots, slot_size;
   oepl_nvm_status_t retval = oepl_nvm_get_num_img_slots(&num_slots, &slot_size);
   if(retval != NVM_SUCCESS) {

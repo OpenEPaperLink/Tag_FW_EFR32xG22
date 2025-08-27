@@ -221,11 +221,18 @@ void oepl_app_process(void)
               img_meta.image_format = data_to_process.AP_data.dataType;
               img_meta.image_type = IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument );
               oepl_nvm_write_image_metadata(img_idx, &img_meta);
+              DPRINTF("Downloading image ID 0x%x in slot 0x%x\n", img_meta.image_type, img_idx);
               application_state_transition(DOWNLOAD);
             }
           } else {
             // Allocate a slot
             nvm_status = oepl_nvm_get_free_image_slot(&img_idx, IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument ));
+            if(nvm_status != NVM_SUCCESS) {
+              // Out of slots for holding persistent images. Remove cached images (without removing most recent one) to try and alleviate.
+              nvm_status = oepl_nvm_erase_image_cache(CUSTOM_IMAGE_NOCUSTOM);
+              nvm_status = oepl_nvm_erase_image_cache(CUSTOM_IMAGE_SLIDESHOW);
+              nvm_status = oepl_nvm_get_free_image_slot(&img_idx, IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument ));
+            }
             if(nvm_status == NVM_SUCCESS) {
               oepl_stored_image_hdr_t img_meta;
               img_meta.is_valid = false;
@@ -234,6 +241,7 @@ void oepl_app_process(void)
               img_meta.image_format = data_to_process.AP_data.dataType;
               img_meta.image_type = IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument );
               oepl_nvm_write_image_metadata(img_idx, &img_meta);
+              DPRINTF("Downloading image ID 0x%x in slot 0x%x\n", img_meta.image_type, img_idx);
               application_state_transition(DOWNLOAD);
             } else {
               // We can't do this right now... Confirm and deal with failure afterwards
@@ -869,14 +877,20 @@ static bool application_process_image_block(size_t index, const uint8_t* data, s
     md5Finalize(&md5);
     if(memcmp(&md5.digest[0], &img_meta.md5, sizeof(img_meta.md5)) == 0) {
       // Mark image download as valid
-      DPRINTF("Image MD5 checks out\n");
+      DPRINTF("Image MD5 checks out\nMaking image of type 0x%x in slot 0x%x valid\n", img_meta.image_type, img_idx);
       img_meta.is_valid = true;
-      oepl_nvm_write_image_metadata(img_idx, &img_meta);
+      nvm_status = oepl_nvm_write_image_metadata(img_idx, &img_meta);
+      if(nvm_status != NVM_SUCCESS) {
+        DPRINTF("Error making image valid\n");
+      }
       return false;
     } else {
       // Erase image download
       DPRINTF("MD5 mismatch on image download, erasing\n");
-      oepl_nvm_erase_image(img_idx);
+      nvm_status = oepl_nvm_erase_image(img_idx);
+      if(nvm_status != NVM_SUCCESS) {
+        DPRINTF("Error erasing image\n");
+      }
       return false;
     }
   } else {

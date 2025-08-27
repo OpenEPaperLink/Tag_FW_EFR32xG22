@@ -242,11 +242,14 @@ void oepl_display_show_infoscreen(oepl_display_infoscreen_t screen)
   }
 
   size_t override_imgidx, img_size;
+  DPRINTF("Checking for image ID 0x%x\n", imgtype);
   if(oepl_nvm_get_image_by_type(imgtype, &override_imgidx, &img_size) == NVM_SUCCESS) {
+    DPRINTF("Found at idx 0x%x\n", override_imgidx);
     oepl_display_show_image(override_imgidx);
     return;
   }
 
+  DPRINTF("Not found, reverting to rendering\n");
   // Fell through, create our own screen
   C_flushDrawItems();
 
