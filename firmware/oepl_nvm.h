@@ -48,7 +48,7 @@ typedef struct __packed {
 	uint32_t size;
   size_t seqno;
 	uint8_t image_format;
-	uint8_t image_type;
+	uint8_t image_type;         // Note: this is the 5-bit image type ID, without flags/LUT
   bool is_valid;
 } oepl_stored_image_hdr_t;
 

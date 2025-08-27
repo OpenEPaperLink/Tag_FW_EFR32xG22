@@ -38,6 +38,13 @@
 #define DPRINTF(...)
 #endif
 
+// Todo: propagate these into shared OEPL definitions
+#define IMG_EXTTYPE_PRELOAD_FLAG 0x04
+#define IMG_EXTTYPE_LUT_MASK 0x03
+#define IMG_EXTTYPE_IMGID_MASK 0xF8
+#define IMG_EXTTYPE_IMGID_SHIFT 0x03
+#define IMG_EXTTYPE_IMGID_FROM_EXTTYPE( exttype ) ((uint8_t)((uint8_t)(exttype & IMG_EXTTYPE_IMGID_MASK) >> IMG_EXTTYPE_IMGID_SHIFT))
+
 typedef enum {
   BOOT_FACTORY_FRESH,
   BOOT_POWERCYCLE,
@@ -188,7 +195,7 @@ void oepl_app_process(void)
           DPRINTF("  - Size %ldB\n", data_to_process.AP_data.dataSize);
           DPRINTF("  - Checksum %08lx%08lx\n", (uint32_t)(data_to_process.AP_data.dataVer >> 32), (uint32_t)data_to_process.AP_data.dataVer);
 
-          if(data_to_process.AP_data.dataTypeArgument & CUSTOM_IMAGE_LUT_MASK) {
+          if(data_to_process.AP_data.dataTypeArgument & IMG_EXTTYPE_LUT_MASK) {
             DPRINTF("Custom LUT support not implemented\n");
             // Don't download, skip to confirmation
             application_state_transition(AWAITING_CONFIRMATION);
@@ -212,20 +219,20 @@ void oepl_app_process(void)
               img_meta.md5 = data_to_process.AP_data.dataVer;
               img_meta.size = data_to_process.AP_data.dataSize;
               img_meta.image_format = data_to_process.AP_data.dataType;
-              img_meta.image_type = data_to_process.AP_data.dataTypeArgument;
+              img_meta.image_type = IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument );
               oepl_nvm_write_image_metadata(img_idx, &img_meta);
               application_state_transition(DOWNLOAD);
             }
           } else {
             // Allocate a slot
-            nvm_status = oepl_nvm_get_free_image_slot(&img_idx, data_to_process.AP_data.dataTypeArgument);
+            nvm_status = oepl_nvm_get_free_image_slot(&img_idx, IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument ));
             if(nvm_status == NVM_SUCCESS) {
               oepl_stored_image_hdr_t img_meta;
               img_meta.is_valid = false;
               img_meta.md5 = data_to_process.AP_data.dataVer;
               img_meta.size = data_to_process.AP_data.dataSize;
               img_meta.image_format = data_to_process.AP_data.dataType;
-              img_meta.image_type = data_to_process.AP_data.dataTypeArgument;
+              img_meta.image_type = IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument );
               oepl_nvm_write_image_metadata(img_idx, &img_meta);
               application_state_transition(DOWNLOAD);
             } else {
@@ -425,7 +432,7 @@ void oepl_app_process(void)
                 data_to_process.AP_data.dataType == DATATYPE_IMG_RAW_2BPP ||
                 data_to_process.AP_data.dataType == DATATYPE_IMG_ZLIB) {
         // If the AP requested us to show this image on screen, do it now.
-        if((data_to_process.AP_data.dataTypeArgument & CUSTOM_IMAGE_PRELOAD_FLAG) == 0) {
+        if((data_to_process.AP_data.dataTypeArgument & IMG_EXTTYPE_PRELOAD_FLAG) == 0) {
           oepl_stored_image_hdr_t img_meta;
           size_t img_idx;
           oepl_nvm_status_t nvm_status = oepl_nvm_get_image_by_hash(
@@ -441,13 +448,13 @@ void oepl_app_process(void)
         }
         // If the new image we received is not a multi-instance image, remove
         // all previous versions from storage.
-        switch(data_to_process.AP_data.dataTypeArgument & ~(CUSTOM_IMAGE_PRELOAD_FLAG | CUSTOM_IMAGE_LUT_MASK)) {
+        switch(IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument )) {
           case CUSTOM_IMAGE_NOCUSTOM:
             break;
           case CUSTOM_IMAGE_SLIDESHOW:
             break;
           default:
-            oepl_nvm_erase_image_cache(data_to_process.AP_data.dataTypeArgument);
+            oepl_nvm_erase_image_cache(IMG_EXTTYPE_IMGID_FROM_EXTTYPE( data_to_process.AP_data.dataTypeArgument ));
             break;
         }
       } else if(data_to_process.AP_data.dataType == DATATYPE_TAG_CONFIG_DATA) {

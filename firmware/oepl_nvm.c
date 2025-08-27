@@ -848,8 +848,6 @@ oepl_nvm_status_t oepl_nvm_get_image_by_type(uint8_t image_type, size_t* img_idx
     return retval;
   }
 
-  image_type &= ~(CUSTOM_IMAGE_PRELOAD_FLAG | CUSTOM_IMAGE_LUT_MASK);
-
   for(size_t i = 0; i < num_slots; i++) {
     oepl_stored_image_hdr_t imgmeta;
     Ecode_t nvm_status = nvm3_readData(nvm3_defaultHandle, NVM3_OBJECT_ID_IMAGE_METADATA_BASE + i, &imgmeta, sizeof(imgmeta));
@@ -881,8 +879,6 @@ oepl_nvm_status_t oepl_nvm_get_free_image_slot(size_t* img_idx, uint8_t image_ty
   if(retval != NVM_SUCCESS) {
     return retval;
   }
-
-  image_type &= ~(CUSTOM_IMAGE_PRELOAD_FLAG | CUSTOM_IMAGE_LUT_MASK);
 
   for(size_t i = 0; i < num_slots; i++) {
     oepl_stored_image_hdr_t imgmeta;
@@ -971,7 +967,6 @@ oepl_nvm_status_t oepl_nvm_erase_image_cache(uint8_t image_type)
 {
   size_t highest_idx, highest_seqno;
 
-  image_type &= ~(CUSTOM_IMAGE_LUT_MASK | CUSTOM_IMAGE_PRELOAD_FLAG);
   oepl_nvm_status_t retval = oepl_nvm_get_image_by_type(image_type, &highest_idx, &highest_seqno);
   if(retval == NVM_NOT_FOUND) {
     return NVM_SUCCESS;
@@ -1018,8 +1013,6 @@ oepl_nvm_status_t oepl_nvm_write_image_metadata(size_t img_idx, oepl_stored_imag
   if(img_idx >= num_slots) {
     return NVM_NOT_SUPPORTED;
   }
-
-  metadata->image_type &= ~(CUSTOM_IMAGE_PRELOAD_FLAG | CUSTOM_IMAGE_LUT_MASK);
 
   uint32_t type;
   size_t len;
