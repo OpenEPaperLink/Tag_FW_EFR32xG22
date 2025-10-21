@@ -198,6 +198,8 @@ typedef enum {
   CTRL_DUALSSD,
   CTRL_IL91874,
   CTRL_GDEW0583Z83,
+  CTRL_UCBWRY,
+  CTRL_JD,
   // ----- Add new display driver types here ----
 
   // ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----

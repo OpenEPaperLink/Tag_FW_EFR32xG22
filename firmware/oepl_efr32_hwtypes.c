@@ -377,6 +377,22 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWR_97;
       case STYPE_SIZE_013:
         return SOLUM_M3_PEGHOOK_BWR_13;
+      case STYPE_SIZE_16_BWRY:
+        return SOLUM_M3_BWRY_16;
+      case STYPE_SIZE_16_BWRY_HIGHRES:
+        return SOLUM_M3_BWRY_16_HIGHRES;
+      case STYPE_SIZE_22_BWRY:
+        return SOLUM_M3_BWRY_22;
+      case STYPE_SIZE_24_BWRY:
+        return SOLUM_M3_BWRY_24;
+      case STYPE_SIZE_29_BWRY:
+        return SOLUM_M3_BWRY_29;
+      case STYPE_SIZE_30_BWRY:
+        return SOLUM_M3_BWRY_30;
+      case STYPE_SIZE_43_BWRY:
+        return SOLUM_M3_BWRY_43;
+      case STYPE_SIZE_75_BWRY:
+        return SOLUM_M3_BWRY_75;
       default:
         return 0;
     }
@@ -459,8 +475,8 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
 
     displayparams->xres = solum_xres;
     displayparams->yres = solum_yres;
-    displayparams->have_thirdcolor = (solum_colortype == 0x01 || solum_colortype == 0x02);
-    displayparams->have_fourthcolor = false;
+    displayparams->have_thirdcolor = (solum_colortype == 0x01 || solum_colortype == 0x02 || solum_colortype == 0x03);
+    displayparams->have_fourthcolor = solum_colortype == 0x03;
 
     switch(solum_ctrltype) {
       case 0x0F:
@@ -485,6 +501,23 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         break;
       case 0x10:
         displayparams->ctrl = CTRL_UC8179;
+        break;
+      case 0x17:
+        // Drycoded from nRF52 firmware. May not work, no samples available.
+        displayparams->ctrl = CTRL_UCBWRY;
+        break;
+      // Maybe these are the same?
+      case 0x1C:
+        // 1.6" BWRY
+      case 0x1E:
+        // 2.2" BWRY WT
+      case 0x20:
+        // 2.9" BWRY
+      case 0x2C:
+        // 7.5" BWRY
+      case 0x2A:
+        // 4.3" BWRY
+        displayparams->ctrl = CTRL_JD;
         break;
       default:
         return false;
@@ -552,6 +585,32 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         displayparams->xoffset = 8;
         displayparams->xres_working = displayparams->yres;
         displayparams->yres_working = displayparams->xres;
+        break;
+      case STYPE_SIZE_16_BWRY:
+        displayparams->swapXY = false;
+        displayparams->mirrorY = true;
+        break;
+      case STYPE_SIZE_24_BWRY:
+        displayparams->swapXY = true;
+        break;
+      case STYPE_SIZE_16_BWRY_HIGHRES:
+        displayparams->swapXY = false;
+        displayparams->mirrorY = false;
+        break;
+      case STYPE_SIZE_22_BWRY:
+        // Todo: BWRY support?
+        break;
+      case STYPE_SIZE_29_BWRY:
+        displayparams->swapXY = true;
+        break;
+      case STYPE_SIZE_30_BWRY:
+        // Todo: BWRY support?
+        break;
+      case STYPE_SIZE_43_BWRY:
+        // Todo: BWRY support?
+        break;
+      case STYPE_SIZE_75_BWRY:
+        // Todo: BWRY support?
         break;
       default:
         return false;

@@ -615,38 +615,40 @@ void drawItem::getXLine(uint8_t *line, uint16_t y, uint8_t c) {
             if (mirrorH) {
                 y = effectiveYRes - 1 - y;
             }
-
-            uint8_t *dbuffer_r = (uint8_t *)malloc(widthBytes);
-            uint8_t *dbuffer_b = (uint8_t *)malloc(widthBytes);
-            // Read the requested line of B/W from the first frame
-            HAL_flashRead((uint32_t)(buffer + ((y + (0 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_b, (effectiveXRes / 8));
-            // Read the requested line of R/Y from the second frame
-            HAL_flashRead((uint32_t)(buffer + ((y + (1 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_r, (effectiveXRes / 8));
-            switch (c) {
-                // color table:
-                //   | color  | BW | RY |
-                //   | white  | 0  | 0  |
-                //   | black  | 1  | 0  |
-                //   | red    | 0  | 1  |
-                //   | yellow | 1  | 1  |
-                case 0:
-                    invert_bytes(dbuffer_r, widthBytes);
-                    and_array(dbuffer_b, dbuffer_r, widthBytes);
-                    break;
-                case 1:
-                    invert_bytes(dbuffer_b, widthBytes);
-                    and_array(dbuffer_b, dbuffer_r, widthBytes);
-                    break;
-                case 2:
-                    and_array(dbuffer_b, dbuffer_r, widthBytes);
-                    break;
-            }
-            if (mirrorV) {
-                reverseBytes(dbuffer_b, widthBytes);
-            }
-            copyWithByteShift(line, dbuffer_b, drawnWidthBytes, xpos / 8);
-            free(dbuffer_b);
-            free(dbuffer_r);
+            {
+                // Inline declaration of variables in a case statement can only happen inside a block
+                uint8_t *dbuffer_r = (uint8_t *)malloc(widthBytes);
+                uint8_t *dbuffer_b = (uint8_t *)malloc(widthBytes);
+                // Read the requested line of B/W from the first frame
+                HAL_flashRead((uint32_t)(buffer + ((y + (0 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_b, (effectiveXRes / 8));
+                // Read the requested line of R/Y from the second frame
+                HAL_flashRead((uint32_t)(buffer + ((y + (1 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_r, (effectiveXRes / 8));
+                switch (c) {
+                    // color table:
+                    //   | color  | BW | RY |
+                    //   | white  | 0  | 0  |
+                    //   | black  | 1  | 0  |
+                    //   | red    | 0  | 1  |
+                    //   | yellow | 1  | 1  |
+                    case 0:
+                        invert_bytes(dbuffer_r, widthBytes);
+                        and_array(dbuffer_b, dbuffer_r, widthBytes);
+                        break;
+                    case 1:
+                        invert_bytes(dbuffer_b, widthBytes);
+                        and_array(dbuffer_b, dbuffer_r, widthBytes);
+                        break;
+                    case 2:
+                        and_array(dbuffer_b, dbuffer_r, widthBytes);
+                        break;
+                }
+                if (mirrorV) {
+                    reverseBytes(dbuffer_b, widthBytes);
+                }
+                copyWithByteShift(line, dbuffer_b, drawnWidthBytes, xpos / 8);
+                free(dbuffer_b);
+                free(dbuffer_r);
+            }   
             break;
         default:
             printf("DRAW: Not supported mode!\n");
