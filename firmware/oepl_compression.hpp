@@ -2,6 +2,7 @@
 
 #define MAX_WINDOW_SIZE 8192
 #define ZLIB_CACHE_SIZE 256
+#define OUT_CACHE_SIZE 1024
 
 class decompress {
    public:
@@ -27,5 +28,8 @@ class decompress {
     uint32_t compressedSize;
     uint32_t compressedPos;
     uint32_t eepromBase;
+    uint8_t* outCache;
+    uint32_t cacheLen;
+    uint32_t cacheStart;
     uint8_t *dictionary = nullptr;
 };

@@ -15,6 +15,7 @@ extern "C" {
 #define COLOR_RED 1
 #define COLOR_BLACK 0
 #define COLOR_DUAL 2
+#define COLOR_YELLOW 2
 
 #define IMAGE_OR 1
 #define IMAGE_REPLACE 0
@@ -51,15 +52,15 @@ void C_setDisplayParameters(bool c_drawDirectionRight, uint32_t c_effectiveXRes,
 
 // C function to printf on the current canvas
 void C_epdSetFont(const GFXfont* font);
-void C_epdPrintf(uint16_t x, uint16_t y, bool color, rotation_t ro, const char *c, ...);
+void C_epdPrintf(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const char *c, ...);
 
 // C functions to add an image to the current canvas
 void C_drawFlashFullscreenImageWithType(uint32_t addr, uint8_t type, uint32_t filesize);
-void C_addBufferedImage(uint16_t x, uint16_t y, bool color, rotation_t ro, const uint8_t *image, bool mask);
-void C_addFlashImage(uint16_t x, uint16_t y, bool color, rotation_t ro, const uint8_t *image);
+void C_addBufferedImage(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const uint8_t *image, bool mask);
+void C_addFlashImage(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const uint8_t *image);
 void C_addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char *c, ...);
-void C_drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color);
-void C_drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color);
+void C_drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color);
+void C_drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color);
 
 // C function for the display driver to get a drawline
 void C_renderDrawLine(uint8_t *line, uint16_t number, uint8_t c);

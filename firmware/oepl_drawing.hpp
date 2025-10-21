@@ -2,12 +2,12 @@
 
 #define FILENAME_LENGTH 32
 
-void addBufferedImage(uint16_t x, uint16_t y, bool color, enum rotation ro, const uint8_t *image, bool mask);
-void addFlashImage(uint16_t x, uint16_t y, bool color, enum rotation ro, const uint8_t *image);
+void addBufferedImage(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const uint8_t *image, bool mask);
+void addFlashImage(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const uint8_t *image);
 void drawImageWithType(uint32_t addr, uint8_t type, uint32_t filesize);
 void addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char *c, ...);
-void drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color);
-void drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color);
+void drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color);
+void drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color);
 
 class drawItem {
    public:
@@ -70,7 +70,7 @@ class drawItem {
 
 class fontrender {
    public:
-    void epdPrintf(uint16_t x, uint16_t y, bool color, enum rotation ro, const char *c, ...);
+    void epdPrintf(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const char *c, ...);
 
     fontrender(const GFXfont *font);
     void setFont(const GFXfont *font);

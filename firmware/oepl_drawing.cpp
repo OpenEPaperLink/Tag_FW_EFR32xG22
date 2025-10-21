@@ -47,7 +47,7 @@ void C_epdSetFont(const GFXfont* font) {
   current_font = font;
 }
 
-void C_epdPrintf(uint16_t x, uint16_t y, bool color, rotation_t ro, const char *c, ...)
+void C_epdPrintf(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const char *c, ...)
 {
   if(current_fontrender) {
     char out_buffer[256];
@@ -65,12 +65,12 @@ void C_drawFlashFullscreenImageWithType(uint32_t addr, uint8_t type, uint32_t fi
   return drawImageWithType(addr, type, filesize);
 }
 
-void C_addBufferedImage(uint16_t x, uint16_t y, bool color, rotation_t ro, const uint8_t *image, bool mask)
+void C_addBufferedImage(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const uint8_t *image, bool mask)
 {
   return addBufferedImage(x, y, color, ro, image, mask);
 }
 
-void C_addFlashImage(uint16_t x, uint16_t y, bool color, rotation_t ro, const uint8_t *image)
+void C_addFlashImage(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const uint8_t *image)
 {
   return addFlashImage(x, y, color, ro, image);
 }
@@ -86,12 +86,12 @@ void C_addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char 
   return addQR(x, y, version, scale, out_buffer);
 }
 
-void C_drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color)
+void C_drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color)
 {
   return drawRoundedRectangle(xpos, ypos, width, height, color);
 }
 
-void C_drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color)
+void C_drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color)
 {
   return drawMask(xpos, ypos, width, height, color);
 }
@@ -106,7 +106,7 @@ void C_flushDrawItems(void) {
 }
 }
 
-void addBufferedImage(uint16_t x, uint16_t y, bool color, enum rotation ro, const uint8_t *image, bool mask) {
+void addBufferedImage(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const uint8_t *image, bool mask) {
     drawItem *di = new drawItem;
 
     di->setRotation(ro);
@@ -163,7 +163,7 @@ void addBufferedImage(uint16_t x, uint16_t y, bool color, enum rotation ro, cons
     di->addToList();
 }
 
-void addFlashImage(uint16_t x, uint16_t y, bool color, enum rotation ro, const uint8_t *image) {
+void addFlashImage(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const uint8_t *image) {
     drawItem *di = new drawItem;
 
     di->setRotation(ro);
@@ -284,20 +284,24 @@ void drawImageWithType(uint32_t addr, uint8_t type, uint32_t filesize) {
             printf("DRAW: drawing compressed image\n");
 #endif
             drawItem *di = new drawItem;
-            decompress *decomp = new decompress;
+            decompress **decomp = (decompress **)calloc(sizeof(decompress *) * 2, 1);
+            decomp[0] = new decompress;
+
             di->type = drawItem::drawType::DRAW_COMPRESSED;
 
-            if (!decomp->openFromFlash(addr, filesize)) {
+            // try to see if we can open the decompression stream
+            if (!decomp[0]->openFromFlash(addr, filesize)) {
                 printf("DRAW: failed to open\n");
                 delete di;
-                delete decomp;
+                delete decomp[0];
+                free(decomp);
                 return;
             }
 
-            di->imageHeaderOffset = decomp->readByte(0);
+            di->imageHeaderOffset = decomp[0]->readByte(0);
 
             struct imageHeader imgheader;
-            decomp->getBlock(1, (uint8_t *)&imgheader, sizeof(struct imageHeader));
+            decomp[0]->getBlock(1, (uint8_t *)&imgheader, sizeof(struct imageHeader));
 
             di->addItem((uint8_t *)decomp, imgheader.width, imgheader.height);
 
@@ -309,7 +313,12 @@ void drawImageWithType(uint32_t addr, uint8_t type, uint32_t filesize) {
                 di->mirrorV = !di->mirrorV;
             }
             if (imgheader.bpp == 1) di->color = 0;
-            if (imgheader.bpp == 2) di->color = 2;
+            if (imgheader.bpp == 2) {
+                di->color = 2;
+                // open a second decompress stream
+                decomp[1] = new decompress;
+                decomp[1]->openFromFlash(addr, filesize);
+            }
             di->cleanUp = true;
             di->checkBounds();
             di->addToList();
@@ -317,7 +326,7 @@ void drawImageWithType(uint32_t addr, uint8_t type, uint32_t filesize) {
     }
 }
 
-void drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color) {
+void drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color) {
     uint16_t widthBytes = width / 8;
     if (width % 8) widthBytes++;
     uint32_t framebufferSize = widthBytes * height;
@@ -357,7 +366,7 @@ void drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t
     free(framebuffer);
 }
 
-void drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, bool color) {
+void drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color) {
     uint16_t widthBytes = width / 8;
     if (width % 8) widthBytes++;
     uint32_t framebufferSize = widthBytes * height;
@@ -383,6 +392,30 @@ void drawMask(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, boo
     framebuffer -= 4;
     addBufferedImage(xpos, ypos, color, rotation::ROTATE_0, framebuffer, DRAW_INVERTED);
     free(framebuffer);
+}
+
+void invert_bytes(uint8_t *array, uint16_t length) {
+    for (uint16_t i = 0; i < length; i++) {
+        array[i] ^= 0xFF;  // ^ array[i];
+    }
+}
+
+void invert_reverse_bytes(uint8_t *array, size_t length) {
+    size_t i;
+    uint8_t temp;
+
+    for (i = 0; i < length / 2; i++) {
+        // Swap the bytes at positions i and (length - i - 1)
+        temp = array[i];
+        array[i] = 0xFF ^ array[length - i - 1];
+        array[length - i - 1] = 0xFF ^ temp;
+    }
+}
+
+void and_array(uint8_t *array1, uint8_t *array2, uint16_t length) {
+    for (uint16_t i = 0; i < length; i++) {
+        array1[i] &= array2[i];
+    }
 }
 
 // drawItem (sprite) functions
@@ -492,21 +525,76 @@ void drawItem::getXLine(uint8_t *line, uint16_t y, uint8_t c) {
             break;
         case DRAW_COMPRESSED:
             if ((color < 2) && (c != color)) return;
-            if ((y >= ypos) && (y < height + ypos)) {
-                uint32_t offset = this->imageHeaderOffset;
-                offset += c * height * widthBytes;
-                decompress *decomp = (decompress *)this->buffer;
-                uint8_t *dbuffer = (uint8_t *)malloc(widthBytes);
-                if (mirrorH) {
-                    decomp->getBlock(offset + (height - (y - ypos)) * widthBytes, dbuffer, widthBytes);
-                } else {
-                    decomp->getBlock(offset + (y - ypos) * widthBytes, dbuffer, widthBytes);
+            if (color == 2) {
+                // decompress 2bpp
+                if ((y >= ypos) && (y < height + ypos)) {
+                    uint32_t offset = this->imageHeaderOffset;
+
+                    // get the offset for the second bitplane
+                    uint32_t offset_r = offset + (1 * height * widthBytes);
+
+                    decompress **decomp = (decompress **)this->buffer;
+                    uint8_t *dbuffer_b = (uint8_t *)malloc(widthBytes);
+                    uint8_t *dbuffer_r = (uint8_t *)malloc(widthBytes);
+
+                    // Read the requested line of B/W from the first frame
+                    // Read the requested line of R/Y from the second frame
+                    if (mirrorH) {
+                        decomp[0]->getBlock(offset + (height - (y - ypos)) * widthBytes, dbuffer_b, widthBytes);
+                        decomp[1]->getBlock(offset_r + (height - (y - ypos)) * widthBytes, dbuffer_r, widthBytes);
+                    } else {
+                        decomp[0]->getBlock(offset + (y - ypos) * widthBytes, dbuffer_b, widthBytes);
+                        decomp[1]->getBlock(offset_r + (y - ypos) * widthBytes, dbuffer_r, widthBytes);
+                    }
+
+                    // Do bitwise operations to get different color planes
+                    // color table:
+                    //   | color  | BW | RY |
+                    //   | white  | 0  | 0  |
+                    //   | black  | 1  | 0  |
+                    //   | red    | 0  | 1  |
+                    //   | yellow | 1  | 1  |
+                    switch (c) {
+                        case COLOR_BLACK:
+                            invert_bytes(dbuffer_r, widthBytes);
+                            and_array(dbuffer_b, dbuffer_r, widthBytes);
+                            break;
+                        case COLOR_RED:
+                            invert_bytes(dbuffer_b, widthBytes);
+                            and_array(dbuffer_b, dbuffer_r, widthBytes);
+                            break;
+                        case COLOR_YELLOW:
+                            and_array(dbuffer_b, dbuffer_r, widthBytes);
+                            break;
+                    }
+
+                    if (mirrorV) {
+                        reverseBytes(dbuffer_b, widthBytes);
+                    }
+
+                    copyWithByteShift(line, dbuffer_b, drawnWidthBytes, xpos / 8);
+                    free(dbuffer_b);
+                    free(dbuffer_r);
                 }
-                if (mirrorV) {
-                    reverseBytes(dbuffer, widthBytes);
+            } else {
+                // 1bpp (black/white)
+                if ((y >= ypos) && (y < height + ypos)) {
+                    uint32_t offset = this->imageHeaderOffset;
+                    decompress **decomp = (decompress **)this->buffer;
+                    uint8_t *dbuffer_b = (uint8_t *)malloc(widthBytes);
+
+                    if (mirrorH) {
+                        decomp[0]->getBlock(offset + (height - (y - ypos)) * widthBytes, dbuffer_b, widthBytes);
+                    } else {
+                        decomp[0]->getBlock(offset + (y - ypos) * widthBytes, dbuffer_b, widthBytes);
+                    }
+
+                    if (mirrorV) {
+                        reverseBytes(dbuffer_b, widthBytes);
+                    }
+                    copyWithByteShift(line, dbuffer_b, drawnWidthBytes, xpos / 8);
+                    free(dbuffer_b);
                 }
-                copyWithByteShift(line, dbuffer, drawnWidthBytes, xpos / 8);
-                free(dbuffer);
             }
             break;
         case DRAW_EEPROM_1BPP:
@@ -524,17 +612,41 @@ void drawItem::getXLine(uint8_t *line, uint16_t y, uint8_t c) {
             }
             break;
         case DRAW_EEPROM_2BPP:
-            if (mirrorH)
+            if (mirrorH) {
                 y = effectiveYRes - 1 - y;
-            if (mirrorV) {
-                uint8_t *dbuffer = (uint8_t *)malloc(widthBytes);
-                HAL_flashRead((uint32_t)(buffer + ((y + (c * effectiveYRes)) * (effectiveXRes / 8))), dbuffer, (effectiveXRes / 8));
-                reverseBytes(dbuffer, widthBytes);
-                memcpy(line, dbuffer, widthBytes);
-                free(dbuffer);
-            } else {
-                HAL_flashRead((uint32_t)(buffer + ((y + (c * effectiveYRes)) * (effectiveXRes / 8))), line, (effectiveXRes / 8));
             }
+
+            uint8_t *dbuffer_r = (uint8_t *)malloc(widthBytes);
+            uint8_t *dbuffer_b = (uint8_t *)malloc(widthBytes);
+            // Read the requested line of B/W from the first frame
+            HAL_flashRead((uint32_t)(buffer + ((y + (0 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_b, (effectiveXRes / 8));
+            // Read the requested line of R/Y from the second frame
+            HAL_flashRead((uint32_t)(buffer + ((y + (1 * effectiveYRes)) * (effectiveXRes / 8))), dbuffer_r, (effectiveXRes / 8));
+            switch (c) {
+                // color table:
+                //   | color  | BW | RY |
+                //   | white  | 0  | 0  |
+                //   | black  | 1  | 0  |
+                //   | red    | 0  | 1  |
+                //   | yellow | 1  | 1  |
+                case 0:
+                    invert_bytes(dbuffer_r, widthBytes);
+                    and_array(dbuffer_b, dbuffer_r, widthBytes);
+                    break;
+                case 1:
+                    invert_bytes(dbuffer_b, widthBytes);
+                    and_array(dbuffer_b, dbuffer_r, widthBytes);
+                    break;
+                case 2:
+                    and_array(dbuffer_b, dbuffer_r, widthBytes);
+                    break;
+            }
+            if (mirrorV) {
+                reverseBytes(dbuffer_b, widthBytes);
+            }
+            copyWithByteShift(line, dbuffer_b, drawnWidthBytes, xpos / 8);
+            free(dbuffer_b);
+            free(dbuffer_r);
             break;
         default:
             printf("DRAW: Not supported mode!\n");
@@ -652,8 +764,10 @@ drawItem::~drawItem() {
     if (cleanUp) {
         switch (this->type) {
             case drawItem::drawType::DRAW_COMPRESSED: {
-                decompress *dec = (decompress *)this->buffer;
-                if (dec) delete dec;
+                decompress **dec = (decompress **)this->buffer;
+                if (dec[0]) delete dec[0];
+                if (dec[1]) delete dec[1];
+                free(dec);
             } break;
             default:
                 free(buffer);
@@ -779,7 +893,7 @@ uint8_t fontrender::drawChar(int32_t x, int32_t y, uint16_t c, uint8_t size) {
     return 0;
 }
 
-void fontrender::epdPrintf(uint16_t x, uint16_t y, bool color, enum rotation ro, const char *c, ...) {
+void fontrender::epdPrintf(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, const char *c, ...) {
     drawItem *di = new drawItem;
     if (di == nullptr) return;
     di->setRotation(ro);
