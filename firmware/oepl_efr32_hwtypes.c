@@ -611,8 +611,10 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         // Todo: BWRY support?
         break;
       case STYPE_SIZE_75_BWRY:
-        // Todo: BWRY support?
-        displayparams->swapXY = true;
+        displayparams->xres = solum_yres;
+        displayparams->yres = solum_xres;
+        displayparams->xres_working = displayparams->xres;
+        displayparams->yres_working = displayparams->yres;
         break;
       default:
         return false;
