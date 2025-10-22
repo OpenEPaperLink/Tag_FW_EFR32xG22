@@ -447,6 +447,7 @@ static void add_rendered_content_splash(void)
         C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 2.9\"");
       } else if(hwid == SOLUM_M3_BWRY_29) {
         C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 BWRY 2.9\"");
+        C_epdPrintf(10, 58, COLOR_YELLOW, ROTATE_0, "Yellow");
       } else {
         C_epdPrintf(10, 38, COLOR_BLACK, ROTATE_0, "Newton M3 2.9 Freezer\"");
       }
