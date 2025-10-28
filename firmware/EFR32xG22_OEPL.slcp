@@ -21,6 +21,7 @@ source:
 - {path: drivers/oepl_display_driver_ucvar043.c}
 - {path: drivers/oepl_display_driver_ucbwry.c}
 - {path: drivers/oepl_display_driver_jd.c}
+- {path: drivers/oepl_display_driver_interleaved.c}
 - {path: drivers/oepl_display_driver_uc8159.c}
 - {path: drivers/oepl_display_driver_uc8179.c}
 - {path: drivers/oepl_display_driver_GDEW0583Z83.c}
@@ -85,6 +86,7 @@ include:
   - {path: oepl_display_driver_ucvar043.h}
   - {path: oepl_display_driver_ucbwry.h}
   - {path: oepl_display_driver_jd.h}
+  - {path: oepl_display_driver_interleaved.h}
   - {path: oepl_display_driver_GDEW0583Z83.h}
   - {path: oepl_display_driver_common.h}
 - path: 'common/QRCode/src'

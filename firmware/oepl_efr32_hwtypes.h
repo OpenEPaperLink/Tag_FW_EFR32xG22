@@ -200,6 +200,7 @@ typedef enum {
   CTRL_GDEW0583Z83,
   CTRL_UCBWRY,
   CTRL_JD,
+  CTRL_INTERLEAVED,
   // ----- Add new display driver types here ----
 
   // ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----

@@ -16,6 +16,7 @@
 #include "oepl_display_driver_ucvar043.h"
 #include "oepl_display_driver_ucbwry.h"
 #include "oepl_display_driver_jd.h"
+#include "oepl_display_driver_interleaved.h"
 #include "oepl_display_driver_GDEW0583Z83.h"
 #include "fonts/fonts.h"
 #include "common/bitmaps.h"
@@ -110,6 +111,9 @@ void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
       break;
     case CTRL_JD:
       driver = &oepl_display_driver_jd;
+      break;
+    case CTRL_INTERLEAVED:
+      driver = &oepl_display_driver_interleaved;
       break;
     case CTRL_DUALSSD:
       driver = &oepl_display_driver_dualssd;
