@@ -515,6 +515,8 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         // 2.9" BWRY
       case 0x2C:
         // 7.5" BWRY
+      case 0x25:
+        // 11.6" BWRY
         displayparams->ctrl = CTRL_JD;
         break;
       case 0x2A:
@@ -613,6 +615,12 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         displayparams->swapXY = true;
         break;
       case STYPE_SIZE_75_BWRY:
+        displayparams->xres = solum_yres;
+        displayparams->yres = solum_xres;
+        displayparams->xres_working = displayparams->xres;
+        displayparams->yres_working = displayparams->yres;
+        break;
+      case STYPE_SIZE_116_BWRY:
         displayparams->xres = solum_yres;
         displayparams->yres = solum_xres;
         displayparams->xres_working = displayparams->xres;

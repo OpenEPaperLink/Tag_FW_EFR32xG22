@@ -241,6 +241,27 @@ static void display_reinit(void)
 
     EMIT_INSTRUCTION_NO_DATA(0x04);
     oepl_display_driver_wait_busy(2000, true);
+  } else if(params->x_res_effective == 960 && params->y_res_effective == 480) {
+    // From GDEY116F91 example
+    //   https://www.good-display.com/product/543.html
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x2F, 0x29});
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x19, 0x78, 0x28, 0x19});
+    EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x00, 0x00, 0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x98, 0xA5, 0xA0});
+    EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+    EMIT_INSTRUCTION_STATIC_DATA(0x40, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+    EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x04, 0x02});
+    EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+    EMIT_INSTRUCTION_STATIC_DATA(0x65, {0x00, 0x00, 0x00, 0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x16});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x65});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE0, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0x62, {0x77, 0x77, 0x77, 0x5c, 0x9f, 0x8c, 0x77, 0x63});
+
+    EMIT_INSTRUCTION_NO_DATA(0x04);
+    oepl_display_driver_wait_busy(2000, true);
   } else {
     oepl_hw_crash(DBG_DISPLAY, false, "Unknown display resolution for JD driver\n");
   }
