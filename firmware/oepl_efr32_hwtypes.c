@@ -393,6 +393,8 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWRY_43;
       case STYPE_SIZE_75_BWRY:
         return SOLUM_M3_BWRY_75;
+      case STYPE_SIZE_116_BWRY:
+        return SOLUM_M3_BWRY_116;
       default:
         return 0;
     }

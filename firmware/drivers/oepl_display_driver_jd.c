@@ -240,7 +240,7 @@ static void display_reinit(void)
 
     EMIT_INSTRUCTION_NO_DATA(0x04);
     oepl_display_driver_wait_busy(2000, true);
-  } else if(params->x_res_effective == 960 && params->y_res_effective == 480) {
+  } else if(params->x_res_effective == 960 && params->y_res_effective == 640) {
     // From GDEY116F91 example
     //   https://www.good-display.com/product/543.html
     EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x2F, 0x29});
