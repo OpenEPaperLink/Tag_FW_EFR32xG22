@@ -163,7 +163,7 @@ static void display_reset(void)
   DPRINTF("Activating driver\n");
   oepl_display_driver_common_activate();
   DPRINTF("Pulsing reset\n");
-  oepl_display_driver_common_pulse_reset(200, 5, 200);
+  oepl_display_driver_common_pulse_reset(200, 40, 200);
 }
 
 static void display_sleep(void)
@@ -203,10 +203,12 @@ static void display_reinit(void)
     // From Waveshare 200x200 sample
     //  https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/1in54_e-Paper_G/ESP32/EPD_1in54g.cpp
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
-    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});
-    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0D, 0x12, 0x30, 0x20, 0x19, 0x2A, 0x22});
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x09});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x12, 0x30, 0x20, 0x19, 0x2A, 0x22});
     EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+
     EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x00, 0xC8, 0x00, 0xC8});
+
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
   } else if(params->x_res_effective == 168 && params->y_res_effective == 384) {
