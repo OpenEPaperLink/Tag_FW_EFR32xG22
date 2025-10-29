@@ -75,6 +75,7 @@ static volatile oepl_display_driver_common_callback_t cb_after_scan = NULL;
 static sl_sleeptimer_timer_handle_t busywait_timer_handle;
 static volatile bool busywait_timer_expired = false;
 static bool pinstate_expected = false;
+static volatile bool pinchange_detected = false;
 static scan_parameters_t scan_parameters = {
   .buf = NULL
 };
@@ -111,6 +112,13 @@ void oepl_display_driver_common_init(void)
   GPIO_PinModeSet(cfg->display->BUSY.port, cfg->display->BUSY.pin, gpioModeInputPull, 0);
   GPIO_PinModeSet(cfg->display->DC.port, cfg->display->DC.pin, gpioModeInputPull, 0);
   GPIO_PinModeSet(cfg->display->nRST.port, cfg->display->nRST.pin, gpioModeInputPull, 0);
+
+  sl_sleeptimer_start_timer_ms(
+    &busywait_timer_handle,
+    100,
+    busywait_timer_cb,
+    NULL, 1, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+  sl_sleeptimer_stop_timer(&busywait_timer_handle);
 }
 
 static void _assert_cs(uint8_t cs_mask)
@@ -173,7 +181,7 @@ void oepl_display_driver_common_activate(void)
                     interrupt,
                     true,
                     true,
-                    true);
+                    false);
   // Setup the IRQ, but don't enable it yet. We'll do this just in time when we expect
   // the busy signal to go low.
   DPRINTF("Registered interrupt on port %d pin %d for BUSY\n", cfg->display->BUSY.port, cfg->display->BUSY.pin);
@@ -205,16 +213,20 @@ void oepl_display_driver_common_activate(void)
 void oepl_display_driver_common_pulse_reset(uint32_t ms_before_assert, uint32_t ms_to_assert, uint32_t ms_after_assert)
 {
   if(ms_before_assert) {
+    DPRINTF("reset delay\n");
     oepl_display_driver_wait(ms_before_assert);
   }
 
+  DPRINTF("pulsing rst\n");
   GPIO_PinOutToggle(cfg->display->nRST.port, cfg->display->nRST.pin);
   oepl_display_driver_wait(ms_to_assert);
   GPIO_PinOutToggle(cfg->display->nRST.port, cfg->display->nRST.pin);
   
   if(ms_after_assert) {
+    DPRINTF("waiting after rst pulse\n");
     oepl_display_driver_wait(ms_after_assert);
   }
+  DPRINTF("reset done\n");
 }
 
 void oepl_display_driver_common_deactivate(void)
@@ -397,12 +409,22 @@ void oepl_display_driver_wait(size_t timeout_ms)
 {
   busywait_timer_expired = false;
   cb_after_busy = busywait_internal_cb;
-  sl_sleeptimer_start_timer_ms(&busywait_timer_handle,
-                               timeout_ms,
-                               busywait_timer_cb,
-                               NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
-  while(!busywait_timer_expired) {
-    sl_power_manager_sleep();
+  sl_status_t status = sl_sleeptimer_restart_timer_ms(
+                        &busywait_timer_handle,
+                        timeout_ms,
+                        busywait_timer_cb,
+                        NULL, 1, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+  if(status == SL_STATUS_OK) {
+    while(!busywait_timer_expired) {
+      sl_power_manager_sleep();
+    }
+  } else {
+    DPRINTF("Couldn't start timer for %ld ms, resorting to busywait\n", timeout_ms);
+    while(timeout_ms > 100) {
+      sl_udelay_wait(100*1000);
+      timeout_ms -= 100;
+    }
+    sl_udelay_wait(timeout_ms * 1000);
   }
   cb_after_busy = NULL;
 }
@@ -422,23 +444,43 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
       break;
   }
 
-  GPIO_IntClear(1<<(cfg->display->BUSY.pin));
-  GPIO_IntEnable(1<<(cfg->display->BUSY.pin));
   busywait_timer_expired = false;
   pinstate_expected = expected_pin_state;
+  pinchange_detected = false;
+
+  GPIO_IntClear(1<<(cfg->display->BUSY.pin));
+  GPIO_IntEnable(1<<(cfg->display->BUSY.pin));
+
   if(timeout_ms) {
-    sl_sleeptimer_start_timer_ms(&busywait_timer_handle,
-                                 timeout_ms,
-                                 busywait_timer_cb,
-                                 NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+    sl_status_t status = sl_sleeptimer_restart_timer_ms(
+                          &busywait_timer_handle,
+                          timeout_ms,
+                          busywait_timer_cb,
+                          NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+    if(status != SL_STATUS_OK) {
+      DPRINTF("Couldn't start sleeptimer!!!\n");
+    }
   }
   
   while(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) != expected_pin_state ? 1 : 0) {
     sl_power_manager_sleep();
+    if(pinchange_detected) {
+      DPRINTF("BUSY deasserted\n");
+      sl_sleeptimer_stop_timer(&busywait_timer_handle);
+      pinchange_detected = false;
+    }
     if(busywait_timer_expired) {
       DPRINTF("Display took longer than expected (>%dms) to clear busy\n", timeout_ms);
+      // Avoid printing endless, but keep waiting for signal
+      busywait_timer_expired = false;
+
+      // Avoid a potential lockup situation where we may end up not detecting the busy pin gone high
+      sl_sleeptimer_restart_timer_ms(
+        &busywait_timer_handle,
+        500,
+        busywait_timer_cb,
+        NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
     }
-    busywait_timer_expired = false;
   }
 
   // Turn off the GPIO interrupt
@@ -469,7 +511,7 @@ void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t c
                                NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
   cb_after_busy = cb_idle;
   GPIO_IntClear(1<<(cfg->display->BUSY.pin));
-  GPIO_IntDisable(1<<(cfg->display->BUSY.pin));
+  GPIO_IntEnable(1<<(cfg->display->BUSY.pin));
 }
 
 // -----------------------------------------------------------------------------
@@ -480,9 +522,8 @@ static void busyint_cb(uint8_t pin, void* ctx)
   (void)ctx;
   if(pin == cfg->display->BUSY.pin) {
     if(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) == pinstate_expected ? 1 : 0) {
-      sl_sleeptimer_stop_timer(&busywait_timer_handle);
-
       GPIO_IntDisable(1<<(cfg->display->BUSY.pin));
+      GPIO_IntClear(1<<(cfg->display->BUSY.pin));
       if(cb_after_busy != NULL) {
         cb_after_busy(BUSY_DEASSERTED);
         cb_after_busy = NULL;
@@ -492,16 +533,19 @@ static void busyint_cb(uint8_t pin, void* ctx)
 }
 
 static void busywait_internal_cb(oepl_display_driver_common_event_t event) {
-  (void)event;
-  // The only reason this exists is to trigger a system wakeup
-  busywait_timer_expired = true;
+  if(event == BUSY_TIMEOUT) {
+    busywait_timer_expired = true;
+  }
+  if(event == BUSY_DEASSERTED) {
+    pinchange_detected = true;
+  }
 }
 
 static void busywait_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
 {
   (void)handle;
   (void)data;
-  if(cb_after_busy) {
+  if(cb_after_busy != NULL) {
     cb_after_busy(BUSY_TIMEOUT);
   }
 }

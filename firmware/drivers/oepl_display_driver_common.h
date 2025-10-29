@@ -60,7 +60,7 @@ typedef enum {
   BUSY_DEASSERTED,
   SCAN_COMPLETE
 } oepl_display_driver_common_event_t;
-typedef void (*oepl_display_driver_common_callback_t)(oepl_display_driver_common_event_t event);
+typedef void (* volatile oepl_display_driver_common_callback_t)(oepl_display_driver_common_event_t event);
 
 // -----------------------------------------------------------------------------
 //                                Global Variables
