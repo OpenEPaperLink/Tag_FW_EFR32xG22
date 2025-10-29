@@ -204,13 +204,12 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_NO_DATA(0x04);
     oepl_display_driver_wait_busy(2000, true);
   } else if(params->x_res_effective == 168 && params->y_res_effective == 384) {
-    // From SeenGreat 384x168 example
-    //   https://seengreat.com/wiki/181/2-9-inch-4-color-ink-screen-supporting-black-white-yellow-and-red-4-co
+    // From captured waveform
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
-    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});
-    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x87, 0x09});
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07});
     EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
-    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x05, 0x00, 0x3F, 0x0A, 0x25, 0x12, 0x1A});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x0A, 0x2F, 0x25, 0x22, 0x2E, 0x21});
     EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
     EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x02, 0x02});
     EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
