@@ -179,6 +179,15 @@ static void display_sleep(void)
 
 static void display_refresh_and_wait(void)
 {
+  if((params->x_res_effective == 168 && params->y_res_effective == 384) ||
+     (params->x_res_effective == 200 && params->y_res_effective == 200)) {
+    oepl_display_driver_wait(100);
+    DPRINTF("Turn on EPD power rails\n");
+    EMIT_INSTRUCTION_STATIC_DATA(0x04, {0x00});
+    oepl_display_driver_wait_busy(1000, true);
+    oepl_display_driver_wait(100);
+  }
+
   DPRINTF("Sending refresh\n");
   EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_DISPLAY_REFRESH, {0x00});
   sl_udelay_wait(2000);
@@ -200,9 +209,6 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x00, 0xC8, 0x00, 0xC8});
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
-
-    EMIT_INSTRUCTION_NO_DATA(0x04);
-    oepl_display_driver_wait_busy(2000, true);
   } else if(params->x_res_effective == 168 && params->y_res_effective == 384) {
     // From captured waveform
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
@@ -219,9 +225,6 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0xB5, {0x03});
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
-
-    EMIT_INSTRUCTION_NO_DATA(0x04);
-    oepl_display_driver_wait_busy(2000, true);
   } else if(params->x_res_effective == 800 && params->y_res_effective == 480) {
     // From Waveshare 800x480 sample
     //   https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/7in5_e-Paper_H/ESP32/EPD_7in5h.cpp
