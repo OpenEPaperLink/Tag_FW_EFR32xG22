@@ -499,7 +499,7 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
   }
 
   uint32_t ms = sl_sleeptimer_tick_to_ms(sl_sleeptimer_get_tick_count() - start_ticks);
-  DPRINTF("Display refreshed in %d seconds\n", ms/1000);
+  DPRINTF("Display action executed in %d.%03d s\n", ms/1000, ms%1000);
 }
 
 void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t cb_idle, size_t timeout_ms, bool expected_pin_state)

@@ -643,6 +643,9 @@ void oepl_radio_process(void)
                       t += bd->data[c];
                     }
                     blockvalid = t == bd->checksum;
+                    if(!blockvalid) {
+                      DPRINTF("Checksum on block invalid, expected 0x%04x but calculated %04x\n", bd->checksum, t);
+                    }
                   }
 
                   idle_radio();
@@ -653,7 +656,8 @@ void oepl_radio_process(void)
                     DPRINTF("Complete\n");
                     cb_result = cb_fptr(BLOCK_COMPLETE, &blockdesc);
                   } else {
-                    DPRINTF("Checksum on block invalid\n");
+                    DPRINTF("First block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
+                    DPRINTF("Final block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[bd->size-4], datablock_buffer[bd->size-3], datablock_buffer[bd->size-2], datablock_buffer[bd->size-1]);
                     cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                     if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
                       if(datablock_buffer) {
@@ -711,10 +715,12 @@ void oepl_radio_process(void)
 
               // Manually ensure we end up in here again
               rx_state = AWAIT_BLOCKREQ_ACK;
+              sl_sleeptimer_stop_timer(&protocol_timer_handle);
+              protocol_timer_expired = false;
               sl_sleeptimer_start_timer_ms(&protocol_timer_handle,
-                                          ack->pleaseWaitMs,
-                                          protocol_timer_cb,
-                                          NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+                                           ack->pleaseWaitMs,
+                                           protocol_timer_cb,
+                                           NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
             } else {
               DPRINTF("Size mismatch for block request ack\n");
               radio_state = IDLE;
@@ -767,6 +773,9 @@ void oepl_radio_process(void)
                             t += bd->data[c];
                           }
                           blockvalid = t == bd->checksum;
+                          if(!blockvalid) {
+                            DPRINTF("Checksum on block invalid, expected 0x%04x but calculated %04x\n", bd->checksum, t);
+                          }
                         }
 
                         idle_radio();
@@ -777,7 +786,9 @@ void oepl_radio_process(void)
                           DPRINTF("Complete\n");
                           cb_result = cb_fptr(BLOCK_COMPLETE, &blockdesc);
                         } else {
-                          DPRINTF("Checksum on block invalid\n");
+                          DPRINTF("Checksum on block invalid after skipping blockreq ack\n");
+                          DPRINTF("First block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
+                          DPRINTF("Final block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[bd->size-4], datablock_buffer[bd->size-3], datablock_buffer[bd->size-2], datablock_buffer[bd->size-1]);
                           cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                           if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
                             if(datablock_buffer) {
@@ -825,9 +836,9 @@ void oepl_radio_process(void)
           RAIL_StartRx(sl_rail_util_get_handle(SL_RAIL_UTIL_HANDLE_INST0), channel_list[cur_channel_idx], NULL);
           rx_state = AWAIT_BLOCK;
           sl_sleeptimer_start_timer_ms(&protocol_timer_handle,
-                                        350,
-                                        protocol_timer_cb,
-                                        NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+                                       350,
+                                       protocol_timer_cb,
+                                       NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
         } else {
           // Go to next iteration of the poll or idle
           idle_radio();
@@ -1076,9 +1087,9 @@ oepl_radio_error_t oepl_radio_request_datablock(oepl_datablock_descriptor_t db)
 
   DPRINTF("Block request started\n");
   sl_sleeptimer_start_timer_ms(&protocol_timer_handle,
-                                350,
-                                protocol_timer_cb,
-                                NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
+                               350,
+                               protocol_timer_cb,
+                               NULL, 0, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG);
 
   return SUCCESS;
 }
