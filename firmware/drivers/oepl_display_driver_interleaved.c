@@ -121,9 +121,9 @@ static void display_draw(void)
           C_renderDrawLine(drawline_b, params->y_res_effective - curY - 1, COLOR_BLACK);
           C_renderDrawLine(drawline_r, params->y_res_effective - curY - 1, COLOR_RED);
           C_renderDrawLine(drawline_y, params->y_res_effective - curY - 1, COLOR_YELLOW);
-          C_renderDrawLine(drawline_b[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_BLACK);
-          C_renderDrawLine(drawline_r[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_RED);
-          C_renderDrawLine(drawline_y[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_YELLOW);
+          C_renderDrawLine(&drawline_b[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_BLACK);
+          C_renderDrawLine(&drawline_r[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_RED);
+          C_renderDrawLine(&drawline_y[params->x_res_effective / 8], params->y_res_effective - curY, COLOR_YELLOW);
       } else {
           C_renderDrawLine(&drawline_b[params->x_res_effective / 8], curY, COLOR_BLACK);
           C_renderDrawLine(&drawline_r[params->x_res_effective / 8], curY, COLOR_RED);
