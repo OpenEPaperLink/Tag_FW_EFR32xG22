@@ -170,6 +170,7 @@ static void display_sleep(void)
 {
   sl_udelay_wait(500);
   EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_POWER_OFF, {0x00});
+  sl_udelay_wait(500);
   oepl_display_driver_wait_busy(2000, true);
   EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_DEEP_SLEEP, {0xA5});
   oepl_display_driver_wait(100);
@@ -185,6 +186,7 @@ static void display_refresh_and_wait(void)
     oepl_display_driver_wait(10);
     DPRINTF("Turn on EPD power rails\n");
     EMIT_INSTRUCTION_STATIC_DATA(0x04, {0x00});
+    sl_udelay_wait(500);
     oepl_display_driver_wait_busy(1000, true);
     oepl_display_driver_wait(10);
   }
@@ -265,6 +267,7 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
 
     EMIT_INSTRUCTION_NO_DATA(0x04);
+    sl_udelay_wait(500);
     oepl_display_driver_wait_busy(2000, true);
   } else if(params->x_res_effective == 960 && params->y_res_effective == 640) {
     // From GDEY116F91 example
@@ -286,6 +289,7 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0x62, {0x77, 0x77, 0x77, 0x5c, 0x9f, 0x8c, 0x77, 0x63});
 
     EMIT_INSTRUCTION_NO_DATA(0x04);
+    sl_udelay_wait(500);
     oepl_display_driver_wait_busy(2000, true);
   } else {
     oepl_hw_crash(DBG_DISPLAY, false, "Unknown display resolution for JD driver\n");
