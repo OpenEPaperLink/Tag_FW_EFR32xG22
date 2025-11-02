@@ -74,7 +74,7 @@ static volatile oepl_display_driver_common_callback_t cb_after_scan = NULL;
 // the busy pin.
 static sl_sleeptimer_timer_handle_t busywait_timer_handle;
 static volatile bool busywait_timer_expired = false;
-static bool pinstate_expected = false;
+static unsigned int pinstate_expected = 0;
 static volatile bool pinchange_detected = false;
 static scan_parameters_t scan_parameters = {
   .buf = NULL
@@ -213,20 +213,21 @@ void oepl_display_driver_common_activate(void)
 void oepl_display_driver_common_pulse_reset(uint32_t ms_before_assert, uint32_t ms_to_assert, uint32_t ms_after_assert)
 {
   if(ms_before_assert) {
-    DPRINTF("reset delay\n");
+    DPRINTF("delay %d ms before reset, busy state = %d\n", ms_before_assert, GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin));
     oepl_display_driver_wait(ms_before_assert);
   }
 
-  DPRINTF("pulsing rst\n");
+  DPRINTF("pulsing rst for %d ms\n", ms_to_assert);
   GPIO_PinOutToggle(cfg->display->nRST.port, cfg->display->nRST.pin);
   oepl_display_driver_wait(ms_to_assert);
+  DPRINTF("busy state under reset = %d\n", GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin));
   GPIO_PinOutToggle(cfg->display->nRST.port, cfg->display->nRST.pin);
   
   if(ms_after_assert) {
-    DPRINTF("waiting after rst pulse\n");
+    DPRINTF("waiting %d ms after rst pulse\n", ms_after_assert);
     oepl_display_driver_wait(ms_after_assert);
   }
-  DPRINTF("reset done\n");
+  DPRINTF("waiting done, busy state = %d\n", GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin));
 }
 
 void oepl_display_driver_common_deactivate(void)
@@ -429,7 +430,7 @@ void oepl_display_driver_wait(size_t timeout_ms)
   cb_after_busy = NULL;
 }
 
-void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
+void oepl_display_driver_wait_busy(size_t timeout_ms, unsigned int expected_pin_state)
 {
   uint32_t start_ticks = sl_sleeptimer_get_tick_count();
   cb_after_busy = busywait_internal_cb;
@@ -462,7 +463,7 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
     }
   }
   
-  while(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) != expected_pin_state ? 1 : 0) {
+  while(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) != expected_pin_state) {
     sl_power_manager_sleep();
     if(pinchange_detected) {
       DPRINTF("BUSY deasserted\n");
@@ -502,7 +503,7 @@ void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state)
   DPRINTF("Display action executed in %d.%03d s\n", ms/1000, ms%1000);
 }
 
-void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t cb_idle, size_t timeout_ms, bool expected_pin_state)
+void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t cb_idle, size_t timeout_ms, unsigned int expected_pin_state)
 {
   pinstate_expected = expected_pin_state;
   sl_sleeptimer_start_timer_ms(&busywait_timer_handle,
@@ -521,7 +522,7 @@ static void busyint_cb(uint8_t pin, void* ctx)
 {
   (void)ctx;
   if(pin == cfg->display->BUSY.pin) {
-    if(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) == pinstate_expected ? 1 : 0) {
+    if(GPIO_PinInGet(cfg->display->BUSY.port, cfg->display->BUSY.pin) == pinstate_expected) {
       GPIO_IntDisable(1<<(cfg->display->BUSY.pin));
       GPIO_IntClear(1<<(cfg->display->BUSY.pin));
       if(cb_after_busy != NULL) {

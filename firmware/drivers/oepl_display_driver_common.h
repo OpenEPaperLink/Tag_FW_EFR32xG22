@@ -88,7 +88,7 @@ void oepl_display_scan_frame_multi(uint8_t* xbuf, size_t bufsize, size_t xstart,
 void oepl_display_scan_frame_async_multi(uint8_t* xbuf, size_t bufsize, size_t xstart, size_t xbytes, size_t ystart, size_t ylines, int color, bool mirrorX, bool mirrorY, uint8_t cs_mask, oepl_display_driver_common_callback_t cb_done);
 
 void oepl_display_driver_wait(size_t timeout_ms);
-void oepl_display_driver_wait_busy(size_t timeout_ms, bool expected_pin_state);
-void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t cb_idle, size_t timeout_ms, bool expected_pin_state);
+void oepl_display_driver_wait_busy(size_t timeout_ms, unsigned int expected_pin_state);
+void oepl_display_driver_wait_busy_async(oepl_display_driver_common_callback_t cb_idle, size_t timeout_ms, unsigned int expected_pin_state);
 
 #endif
