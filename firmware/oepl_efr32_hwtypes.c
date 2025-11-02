@@ -604,7 +604,7 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         displayparams->mirrorY = false;
         break;
       case STYPE_SIZE_22_BWRY:
-        // Todo: BWRY support?
+        displayparams->swapXY = true;
         break;
       case STYPE_SIZE_29_BWRY:
         displayparams->swapXY = true;

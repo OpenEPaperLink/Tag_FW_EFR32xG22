@@ -180,12 +180,13 @@ static void display_sleep(void)
 static void display_refresh_and_wait(void)
 {
   if((params->x_res_effective == 168 && params->y_res_effective == 384) ||
-     (params->x_res_effective == 200 && params->y_res_effective == 200)) {
-    oepl_display_driver_wait(100);
+     (params->x_res_effective == 200 && params->y_res_effective == 200) ||
+     (params->x_res_effective == 160 && params->y_res_effective == 296)) {
+    oepl_display_driver_wait(10);
     DPRINTF("Turn on EPD power rails\n");
     EMIT_INSTRUCTION_STATIC_DATA(0x04, {0x00});
     oepl_display_driver_wait_busy(1000, true);
-    oepl_display_driver_wait(100);
+    oepl_display_driver_wait(10);
   }
 
   DPRINTF("Sending refresh\n");
@@ -227,6 +228,26 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0xB5, {0x03});
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+  } else if(params->x_res_effective == 160 && params->y_res_effective == 296) {
+    // From captured waveform
+    DPRINTF("Pulsing reset twice\n");
+    oepl_display_driver_common_pulse_reset(200, 40, 200);
+    oepl_display_driver_wait(10);
+    EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x09});
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x03});
+    EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x0A, 0x2F, 0x25, 0x22, 0x2E, 0x21});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+    EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x02, 0x02});
+    EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x22});
+    EMIT_INSTRUCTION_STATIC_DATA(0xB4, {0xD0});
+    EMIT_INSTRUCTION_STATIC_DATA(0xB5, {0x03});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+    oepl_display_driver_wait(300);
   } else if(params->x_res_effective == 800 && params->y_res_effective == 480) {
     // From Waveshare 800x480 sample
     //   https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/7in5_e-Paper_H/ESP32/EPD_7in5h.cpp
