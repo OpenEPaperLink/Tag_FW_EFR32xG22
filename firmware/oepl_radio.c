@@ -656,8 +656,14 @@ void oepl_radio_process(void)
                     DPRINTF("Complete\n");
                     cb_result = cb_fptr(BLOCK_COMPLETE, &blockdesc);
                   } else {
-                    DPRINTF("First block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
-                    DPRINTF("Final block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[bd->size-4], datablock_buffer[bd->size-3], datablock_buffer[bd->size-2], datablock_buffer[bd->size-1]);
+                    DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
+                    DPRINTF("Checksummed bytes:");
+                    for(size_t i = 0; i < bd->size; i++) {
+                      if(i & 0x7 == 0) {
+                        DPRINTF("\n");
+                      }
+                      DPRINTF("%02x ");
+                    }
                     cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                     if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
                       if(datablock_buffer) {
@@ -787,8 +793,14 @@ void oepl_radio_process(void)
                           cb_result = cb_fptr(BLOCK_COMPLETE, &blockdesc);
                         } else {
                           DPRINTF("Checksum on block invalid after skipping blockreq ack\n");
-                          DPRINTF("First block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
-                          DPRINTF("Final block bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[bd->size-4], datablock_buffer[bd->size-3], datablock_buffer[bd->size-2], datablock_buffer[bd->size-1]);
+                          DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
+                          DPRINTF("Checksummed bytes:");
+                          for(size_t i = 0; i < bd->size; i++) {
+                            if(i & 0x7 == 0) {
+                              DPRINTF("\n");
+                            }
+                            DPRINTF("%02x ");
+                          }
                           cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                           if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
                             if(datablock_buffer) {
