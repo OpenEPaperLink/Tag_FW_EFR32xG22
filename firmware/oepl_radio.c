@@ -662,7 +662,7 @@ void oepl_radio_process(void)
                       if(i & 0x7 == 0) {
                         DPRINTF("\n");
                       }
-                      DPRINTF("%02x ");
+                      DPRINTF("%02x ", bd->data[i]);
                     }
                     cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                     if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
@@ -799,7 +799,7 @@ void oepl_radio_process(void)
                             if(i & 0x7 == 0) {
                               DPRINTF("\n");
                             }
-                            DPRINTF("%02x ");
+                            DPRINTF("%02x ", bd->data[i]);
                           }
                           cb_result = cb_fptr(BLOCK_CANCELED, NULL);
                           if(rx_state != AWAIT_BLOCK && rx_state != AWAIT_BLOCKREQ_ACK) {
