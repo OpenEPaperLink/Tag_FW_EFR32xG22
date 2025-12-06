@@ -201,8 +201,8 @@ static void display_reinit(void)
 {
   // Reset the display
   display_reset();
-
-  if(params->x_res_effective == 200 && params->y_res_effective == 200) {
+  if(params->x_res_effective == 200 && params->y_res_effective == 200 && false) {
+    // This only works with the external power supply (>= 3.2 v).Could related to booster setting.
     // From Waveshare 200x200 sample
     //  https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/1in54_e-Paper_G/ESP32/EPD_1in54g.cpp
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
@@ -214,6 +214,27 @@ static void display_reinit(void)
 
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+  } else if(params->x_res_effective == 200 && params->y_res_effective == 200) {
+    // From captured waveform
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x09});  // keep the current mirror setting in 'oepl_efr32_hwtypes.c'
+    // EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x09});  //  from capture, need to adjust the mirror setting in 'oepl_efr32_hwtypes.c'
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07});
+    // EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78}); // not seen from capture
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x40, 0x00, 0x00});
+
+    EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x00, 0xC8, 0x00, 0xC8});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+    EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xA5});
+    EMIT_INSTRUCTION_STATIC_DATA(0xEF, {0x03, 0x2C, 0x07, 0x20, 0x07,0x10, 0x09, 0x21});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDC, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDD, {0x06});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x46});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDA, {0x08});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});
   } else if(params->x_res_effective == 168 && params->y_res_effective == 384) {
     // From captured waveform
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
