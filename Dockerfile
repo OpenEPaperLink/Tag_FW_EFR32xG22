@@ -1,5 +1,5 @@
 # Credit goes to https://github.com/NabuCasa/silabs-firmware-builder
-FROM debian:bookworm
+FROM debian:trixie
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -14,7 +14,8 @@ RUN \
        yq \
        libgl1 \
        make \
-       default-jre-headless \
+       openjdk-21-jre-headless \
+       libglib2.0-0 \
        patch \
        python3 \
        python3-pip \
@@ -73,6 +74,7 @@ RUN \
            --sdk="/gecko_sdk/" \
     && slc signature trust --sdk "/gecko_sdk/" \
     && slc configuration \
-           --gcc-toolchain="/opt/arm-gnu-toolchain-${GCC_ARM_VERSION}-x86_64-arm-none-eabi/"
+           --gcc-toolchain="/opt/arm-gnu-toolchain-${GCC_ARM_VERSION}-x86_64-arm-none-eabi/" \
+    || (cat /opt/slc_cli/bin/slc-cli/configuration/*.log && exit 1)
 
 RUN python3 -m pip install bincopy --break-system-packages
