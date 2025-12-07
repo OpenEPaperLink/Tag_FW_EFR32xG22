@@ -216,12 +216,10 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
   } else if(params->x_res_effective == 200 && params->y_res_effective == 200) {
     // From captured waveform
-    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x09});  // keep the current mirror setting in 'oepl_efr32_hwtypes.c'
-    // EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x09});  //  from capture, need to adjust the mirror setting in 'oepl_efr32_hwtypes.c'
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x09});
     EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07});
     // EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78}); // not seen from capture
     EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x40, 0x00, 0x00});
-
     EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x00, 0xC8, 0x00, 0xC8});
     EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});

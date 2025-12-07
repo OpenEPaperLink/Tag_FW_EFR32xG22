@@ -601,8 +601,8 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         break;
       case STYPE_SIZE_16_BWRY_HIGHRES:
         displayparams->swapXY = false;
-        displayparams->mirrorY = false;
-        displayparams->mirrorX = false;
+        displayparams->mirrorY = true;
+        displayparams->mirrorX = true;
         break;
       case STYPE_SIZE_22_BWRY:
         displayparams->swapXY = true;
