@@ -203,17 +203,23 @@ static void display_reinit(void)
   display_reset();
 
   if(params->x_res_effective == 200 && params->y_res_effective == 200) {
-    // From Waveshare 200x200 sample
-    //  https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/1in54_e-Paper_G/ESP32/EPD_1in54g.cpp
-    EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
+    // From captured waveform https://github.com/OpenEPaperLink/Tag_FW_EFR32xG22/pull/14
     EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x09});
-    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x12, 0x30, 0x20, 0x19, 0x2A, 0x22});
-    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
-
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x40, 0x00, 0x00});
     EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x00, 0xC8, 0x00, 0xC8});
-
-    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xA5});
+    EMIT_INSTRUCTION_STATIC_DATA(0xEF, {0x03, 0x2C, 0x07, 0x20, 0x07,0x10, 0x09, 0x21});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDC, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDD, {0x06});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x46});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDA, {0x08});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});
   } else if(params->x_res_effective == 168 && params->y_res_effective == 384) {
     // From captured waveform
     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
