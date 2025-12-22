@@ -1,5 +1,5 @@
 # Credit goes to https://github.com/NabuCasa/silabs-firmware-builder
-FROM debian:bookworm
+FROM debian:trixie
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -14,7 +14,8 @@ RUN \
        yq \
        libgl1 \
        make \
-       default-jre-headless \
+       openjdk-21-jre-headless \
+       libglib2.0-0 \
        patch \
        python3 \
        python3-pip \
