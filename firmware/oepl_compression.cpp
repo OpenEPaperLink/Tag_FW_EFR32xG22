@@ -34,6 +34,7 @@ decompress::decompress() {
 }
 
 void decompress::seek(uint32_t address) {
+    (void) address;
 }
 
 bool decompress::readHeader() {
@@ -156,7 +157,6 @@ uint32_t decompress::getBlock(uint32_t address, uint8_t *target, uint32_t len) {
 
     // skip to the next part of the output stream
     if (bufferStart != decompressedPos) {
-        uint8_t temp[OUT_CACHE_SIZE];
         while (this->decompressedPos < bufferStart) {
             uint32_t readBytes = bufferStart - decompressedPos;
             if (readBytes > OUT_CACHE_SIZE) readBytes = OUT_CACHE_SIZE;

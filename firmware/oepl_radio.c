@@ -340,6 +340,9 @@ void oepl_radio_init(oepl_radio_event_cb_t cb, uint8_t reason, uint8_t channel)
   // when powered from the same power source
   uint8_t ranbyte;
   uint16_t ranlen = RAIL_GetRadioEntropy(sl_rail_util_get_handle(SL_RAIL_UTIL_HANDLE_INST0), &ranbyte, 1);
+  if (ranlen == 0) {
+    ranbyte = 0x1F;
+  }
 
   // random delay between 0 and 2550 ms
   DPRINTF("Delaying radio by %dms\n", ranbyte * 10);
@@ -659,7 +662,7 @@ void oepl_radio_process(void)
                     DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
                     DPRINTF("Checksummed bytes:");
                     for(size_t i = 0; i < bd->size; i++) {
-                      if(i & 0x7 == 0) {
+                      if((i & 0x7) == 0) {
                         DPRINTF("\n");
                       }
                       DPRINTF("%02x ", bd->data[i]);
@@ -796,7 +799,7 @@ void oepl_radio_process(void)
                           DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
                           DPRINTF("Checksummed bytes:");
                           for(size_t i = 0; i < bd->size; i++) {
-                            if(i & 0x7 == 0) {
+                            if((i & 0x7) == 0) {
                               DPRINTF("\n");
                             }
                             DPRINTF("%02x ", bd->data[i]);
