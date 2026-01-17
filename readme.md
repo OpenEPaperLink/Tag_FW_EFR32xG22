@@ -22,14 +22,17 @@ For building directly from your own environment:
 - A local install of Silicon Labs [SLC-CLI](https://docs.silabs.com/simplicity-studio-5-users-guide/latest/ss-5-users-guide-tools-slc-cli/02-installation)
   and its dependencies (Java runtime).
 - make or cmake
-- ARM GCC for embedded > v12 installed on your system
+- ARM GCC for embedded >= v12 installed on your system
 
 For building in Docker:
 - A working Docker install
 
 For flashing firmware:
 - [Simplicity Commander](https://www.silabs.com/developers/simplicity-studio/simplicity-commander) or a debug probe of your choice with support for EFR32BG22
+  - Note that in order to unlock factory-locked devices (such as Solum), you will need a JLink-based debugger
 - The correct wiring between your debug probe and your device's debug port.
+ 
+See [the wiki](https://github.com/OpenEPaperLink/OpenEPaperLink/wiki/Flashing-SiLabs-based-M3-Newton-Displays) for more details on the firmware flashing process.
 
 ### Building firmware
 
@@ -41,11 +44,12 @@ See [own readme](./firmware/readme.md).
 
 #### All-in-one Docker build
 
+From a bash-like shell (note you might need to `sudo` docker depending on how your permissions are set up):
 - Build the buildsystem container with the Silabs build support tools
   - In this folder, run `docker build . -t silabs-builder -f Dockerfile` to build the container and call it `silabs-builder`
 - Launch an interactive shell within the build container
   - In this folder, run `docker run --rm -it --user builder -v $(pwd):/build -v ~/.gitconfig:/home/builder/.gitconfig silabs-builder` to launch a build shell
-- Run the build script (`build_all.sh`) within the container
+- Run the build script (`./build_all.sh`) within the container
 
 ## Flashing
 
