@@ -12,6 +12,7 @@
 #include "oepl_display_driver_dualssd.h"
 #include "oepl_display_driver_uc8179.h"
 #include "oepl_display_driver_uc8159.h"
+#include "oepl_display_driver_ucvar026.h"
 #include "oepl_display_driver_ucvar029.h"
 #include "oepl_display_driver_ucvar043.h"
 #include "oepl_display_driver_ucbwry.h"
@@ -117,6 +118,9 @@ void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
       break;
     case CTRL_DUALSSD:
       driver = &oepl_display_driver_dualssd;
+      break;
+    case CTRL_EPDVAR26:
+      driver = &oepl_display_driver_ucvar026;
       break;
     case CTRL_EPDVAR29:
       driver = &oepl_display_driver_ucvar029;
@@ -432,10 +436,16 @@ static void add_rendered_content_splash(void)
       C_epdPrintf(5, yres - 20, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       break;
     case SOLUM_M3_BWR_26:
+      // Fallthrough
+    case SOLUM_M3_BW_26:
       C_epdSetFont(&FreeSansBold18pt7b);
       C_epdPrintf(2, 2, COLOR_BLACK, ROTATE_0, "OpenEPaperLink");
       C_epdSetFont(&FreeSans9pt7b);
-      C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 2.6\"");
+      if(hwid == SOLUM_M3_BWR_26) {
+		C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 2.6\"");
+      } else {
+        C_epdPrintf(10, 38, COLOR_BLACK, ROTATE_0, "Newton M3 2.6 Freezer\"");
+      }
       C_epdPrintf(5, yres - 40, COLOR_BLACK, ROTATE_0, "FW: %04X-%s", fw, suffix);
       C_epdPrintf(5, yres - 20, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       C_addQR(xres - 120, 42, 3, 3, "https://openepaperlink.eu/tag/0/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);

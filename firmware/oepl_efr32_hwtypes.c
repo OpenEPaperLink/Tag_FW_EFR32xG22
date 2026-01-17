@@ -357,6 +357,8 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWR_22_LITE;
       case STYPE_SIZE_026:
         return SOLUM_M3_BWR_26;
+      case STYPE_SIZE_026_FREEZER:
+        return SOLUM_M3_BW_26;
       case STYPE_SIZE_029:
         return SOLUM_M3_BWR_29;
       case STYPE_SIZE_029_FREEZER:
@@ -556,6 +558,11 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
       case STYPE_SIZE_026:
         displayparams->swapXY = true;
         displayparams->xoffset = 8;
+        break;
+      case STYPE_SIZE_026_FREEZER:
+        displayparams->swapXY = true;
+        displayparams->xoffset = 8;
+        displayparams->ctrl = CTRL_EPDVAR26;
         break;
       case STYPE_SIZE_029:
         displayparams->swapXY = true;
