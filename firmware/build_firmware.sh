@@ -49,6 +49,8 @@ retVal=$?
 if [ $retVal -ne 0 ]; then
     echo "Error building firmware"
     exit $retVal
+else
+    echo "Built firmware ${GIT_VERSION#tags/releases/}"
 fi
 
 cd ..
