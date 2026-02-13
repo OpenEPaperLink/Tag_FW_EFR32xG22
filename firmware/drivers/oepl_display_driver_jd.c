@@ -181,6 +181,7 @@ static void display_sleep(void)
 static void display_refresh_and_wait(void)
 {
   if((params->x_res_effective == 168 && params->y_res_effective == 384) ||
+     (params->x_res_effective == 184 && params->y_res_effective == 360) ||
      (params->x_res_effective == 200 && params->y_res_effective == 200) ||
      (params->x_res_effective == 160 && params->y_res_effective == 296)) {
     oepl_display_driver_wait(10);
@@ -314,6 +315,22 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_NO_DATA(0x04);
     sl_udelay_wait(500);
     oepl_display_driver_wait_busy(2000, true);
+  } else if(params->x_res_effective == 184 && params->y_res_effective == 360) {
+  // From captured waveform
+     EMIT_INSTRUCTION_STATIC_DATA(0x4D, {0x78});
+     EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x47, 0x09});
+     EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07});
+     EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
+     EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x0F, 0x0A, 0x2F, 0x25, 0x22, 0x2E, 0x21});
+     EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+     EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x02, 0x02});
+     EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+     EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+     EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x22});
+     EMIT_INSTRUCTION_STATIC_DATA(0xB4, {0xD0});
+     EMIT_INSTRUCTION_STATIC_DATA(0xB5, {0x03});
+     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
   } else {
     oepl_hw_crash(DBG_DISPLAY, false, "Unknown display resolution for JD driver\n");
   }

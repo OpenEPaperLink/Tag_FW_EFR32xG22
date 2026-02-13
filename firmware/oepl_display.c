@@ -436,13 +436,17 @@ static void add_rendered_content_splash(void)
       C_epdPrintf(5, yres - 20, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       break;
     case SOLUM_M3_BWR_26:
+    case SOLUM_M3_BWRY_26:
       // Fallthrough
     case SOLUM_M3_BW_26:
       C_epdSetFont(&FreeSansBold18pt7b);
       C_epdPrintf(2, 2, COLOR_BLACK, ROTATE_0, "OpenEPaperLink");
       C_epdSetFont(&FreeSans9pt7b);
       if(hwid == SOLUM_M3_BWR_26) {
-		C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 2.6\"");
+		  C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 2.6\"");
+      } else if(hwid == SOLUM_M3_BWRY_26) {
+        C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 BWRY 2.6\"");
+        C_epdPrintf(10, 58, COLOR_YELLOW, ROTATE_0, "Yellow");
       } else {
         C_epdPrintf(10, 38, COLOR_BLACK, ROTATE_0, "Newton M3 2.6 Freezer\"");
       }
