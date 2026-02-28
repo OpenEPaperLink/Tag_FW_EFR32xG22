@@ -1002,7 +1002,7 @@ oepl_radio_error_t oepl_radio_request_datablock(oepl_datablock_descriptor_t db)
     blocks_in_file++;
   }
   size_t blocksize = db.idx < blocks_in_file - 1 ? 4096 : db.file.filesize - (db.idx * 4096);
-  size_t blockparts = blocksize / 99;
+  size_t blockparts = (blocksize + sizeof(struct blockData)) / 99;
   if(blocksize % 99) {
     blockparts++;
   }
