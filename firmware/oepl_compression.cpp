@@ -91,6 +91,8 @@ void decompress::setupContext() {
     this->ctx->source_limit = this->compBuffer + ZLIB_CACHE_SIZE;
     compressedPos = 0;
     decompressedPos = 0;
+    cacheStart = 0;
+    cacheLen = 0;
 }
 
 decompress::~decompress() {
