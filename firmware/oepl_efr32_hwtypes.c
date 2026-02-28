@@ -383,6 +383,8 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWRY_16;
       case STYPE_SIZE_16_BWRY_HIGHRES:
         return SOLUM_M3_BWRY_16_HIGHRES;
+      case STYPE_SIZE_16_BWRY_HIGHRES_ROTATED:
+        return SOLUM_M3_BWRY_16_HIGHRES_ROTATED;
       case STYPE_SIZE_22_BWRY:
         return SOLUM_M3_BWRY_22;
       case STYPE_SIZE_24_BWRY:
@@ -611,6 +613,10 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
       case STYPE_SIZE_16_BWRY_HIGHRES:
         displayparams->swapXY = false;
         displayparams->mirrorY = false;
+        break;
+      case STYPE_SIZE_16_BWRY_HIGHRES_ROTATED:
+        displayparams->swapXY = true;
+        displayparams->mirrorY = true;
         break;
       case STYPE_SIZE_22_BWRY:
         displayparams->swapXY = true;
