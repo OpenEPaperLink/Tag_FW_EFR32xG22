@@ -661,7 +661,7 @@ void oepl_radio_process(void)
                   } else {
                     DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
                     DPRINTF("Checksummed bytes:");
-                    for(size_t i = 0; i < bd->size; i++) {
+                    for(size_t i = 0; i < SL_MIN(bd->size, BLOCK_XFER_BUFFER_SIZE - sizeof(struct blockData)); i++) {
                       if((i & 0x7) == 0) {
                         DPRINTF("\n");
                       }
@@ -798,7 +798,7 @@ void oepl_radio_process(void)
                           DPRINTF("Checksum on block invalid after skipping blockreq ack\n");
                           DPRINTF("Header bytes 0x%02x 0x%02x 0x%02x 0x%02x\n", datablock_buffer[0], datablock_buffer[1], datablock_buffer[2], datablock_buffer[3]);
                           DPRINTF("Checksummed bytes:");
-                          for(size_t i = 0; i < bd->size; i++) {
+                          for(size_t i = 0; i < SL_MIN(bd->size, BLOCK_XFER_BUFFER_SIZE - sizeof(struct blockData)); i++) {
                             if((i & 0x7) == 0) {
                               DPRINTF("\n");
                             }
