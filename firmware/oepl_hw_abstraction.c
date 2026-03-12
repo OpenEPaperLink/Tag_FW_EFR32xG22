@@ -10,8 +10,10 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_emu.h"
+#include "em_wdog.h"
 #include "em_i2c.h"
 #include "em_iadc.h"
+#include "em_rmu.h"
 #include "gpiointerrupt.h"
 #include "sl_sleeptimer.h"
 #include "sl_power_manager.h"
@@ -51,6 +53,7 @@
 // -----------------------------------------------------------------------------
 static void em_cb(sl_power_manager_em_t from, sl_power_manager_em_t to);
 static void gpioint_cb(uint8_t pin, void* ctx);
+static void hardware_error_handler(void);
 
 // -----------------------------------------------------------------------------
 //                                Global Variables
@@ -211,6 +214,17 @@ void oepl_hw_init(void)
         sl_power_manager_sleep();
       }
   }
+
+  // Now that we have debug output, log a message if we're coming back from a HW error
+  uint32_t resetCause = RMU_ResetCauseGet();
+  RMU_ResetCauseClear();
+
+  if (resetCause & EMU_RSTCAUSE_WDOG0) {
+    DPRINTF("*** Rebooted due to catching a hardware fault ***\n");
+  }
+
+  CMU_ClockEnable(cmuClock_WDOG0, true);
+  CMU_ClockSelectSet(cmuClock_WDOG0, cmuSelect_ULFRCO);
 
   // Setup flash
   if(tagconfig->hwtype == BRD4402B_WSTK ||
@@ -1013,6 +1027,23 @@ void oepl_hw_debugprint(oepl_hw_debug_module_t module, const char* fmt, ...)
 }
 #endif
 
+/* Redirect all hardware errors to our custom handler */
+
+void NMI_Handler(void)
+{
+  hardware_error_handler();
+}
+
+void HardFault_Handler(void)
+{
+  hardware_error_handler();
+}
+
+void BusFault_Handler(void)
+{
+  hardware_error_handler();
+}
+
 // -----------------------------------------------------------------------------
 //                          Static Function Definitions
 // -----------------------------------------------------------------------------
@@ -1046,4 +1077,25 @@ static void em_cb(sl_power_manager_em_t from,
         break;
     }
   }
+}
+
+static void hardware_error_handler(void)
+{
+  // Use watchdog to trigger a reboot in a second
+  WDOG_Init_TypeDef wdogInit = WDOG_INIT_DEFAULT;
+  wdogInit.perSel = wdogPeriod_1k;
+
+  // Debug print (watchdog will make us reset if this should fail/hang)
+  DPRINTF("** Caught an exception! **\n");
+  DPRINTF("  IRQ num %d\n", SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+  DPRINTF("  SHCSR %08x\n", SCB->SHCSR);
+  DPRINTF("  CFSR %08x\n", SCB->CFSR);
+  DPRINTF("  HFSR %08x\n", SCB->HFSR);
+  DPRINTF("  DFSR %08x\n", SCB->DFSR);
+  DPRINTF("  MMFAR %08x\n", SCB->MMFAR);
+  DPRINTF("  BFAR %08x\n", SCB->BFAR);
+  DPRINTF("  AFSR %08x\n", SCB->AFSR);
+
+  // Wait for watchdog
+  while(1);
 }

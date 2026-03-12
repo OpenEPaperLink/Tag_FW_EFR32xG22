@@ -122,6 +122,8 @@ component:
 - {id: spidrv_core}
 - {id: emlib_iadc}
 - {id: emlib_i2c}
+- {id: emlib_wdog}
+- {id: emlib_rmu}
 - {id: gpiointerrupt}
 - instance: [euart_debug]
   id: iostream_eusart
