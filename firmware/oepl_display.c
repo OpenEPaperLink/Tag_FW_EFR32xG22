@@ -401,6 +401,7 @@ static void add_rendered_content_splash(void)
     case SOLUM_M3_BWR_16:
     case SOLUM_M3_BWRY_16:
     case SOLUM_M3_BWRY_16_HIGHRES:
+    case SOLUM_M3_BWRY_16_HIGHRES_ROTATED:
       C_epdSetFont(&FreeSans9pt7b);
       C_epdPrintf(2, 2, COLOR_BLACK, ROTATE_0, "OpenEPaperLink");
       if (hwid == SOLUM_M3_PEGHOOK_BWR_13) {
@@ -408,7 +409,7 @@ static void add_rendered_content_splash(void)
       } else {
         C_epdPrintf(10, 38, COLOR_RED, ROTATE_0, "Newton M3 1.6\"");
       }
-      if (hwid == SOLUM_M3_BWRY_16 || hwid == SOLUM_M3_BWRY_16_HIGHRES) {
+      if (hwid == SOLUM_M3_BWRY_16 || hwid == SOLUM_M3_BWRY_16_HIGHRES || hwid == SOLUM_M3_BWRY_16_HIGHRES_ROTATED) {
         C_epdPrintf(5, yres - 60, COLOR_YELLOW, ROTATE_0, "BWRY");
       }
       C_epdPrintf(5, yres - 40, COLOR_BLACK, ROTATE_0, "FW: %04X-%s", fw, suffix);
