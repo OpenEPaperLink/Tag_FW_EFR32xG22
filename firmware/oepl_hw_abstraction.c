@@ -1085,6 +1085,8 @@ static void hardware_error_handler(void)
   WDOG_Init_TypeDef wdogInit = WDOG_INIT_DEFAULT;
   wdogInit.perSel = wdogPeriod_1k;
 
+  WDOGn_Init(WDOG0, &wdogInit);
+
   // Debug print (watchdog will make us reset if this should fail/hang)
   DPRINTF("** Caught an exception! **\n");
   DPRINTF("  IRQ num %d\n", SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
