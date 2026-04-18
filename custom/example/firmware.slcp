@@ -1,0 +1,304 @@
+# Silicon Labs Project Configuration Tools: slcp, v0, Component selection file.
+#
+# NB: project_name and label must match subdirectory name exactly
+project_name: example
+label: example
+description: Open E-paper Link compatible firmware for EFR32xG22.
+  It is based off of the RAIL Empty SoC sample application in the GSDK.
+quality: development
+source:
+  - { path: oepl_display_driver_custom.h}
+  - { path: oepl_display_driver_E2741QS0B3.h }
+  - { path: oepl_display_driver_E2741QS0B3.c}
+  - { path: oepl_efr32_hwtypes_custom.c}
+  - { path: oepl_display_custom.inl}
+  - { path: ../../firmware/boilerplate/app_init.c, directory: boilerplate }
+  - { path: ../../firmware/boilerplate/app_init.h, directory: boilerplate }
+  - { path: ../../firmware/boilerplate/app_process.c, directory: boilerplate }
+  - { path: ../../firmware/boilerplate/app_process.h, directory: boilerplate }
+  - { path: ../../firmware/boilerplate/main.c, directory: boilerplate }
+  - { path: ../../firmware/common/bitmaps.h, directory: common}
+  - { path: ../../firmware/common/fonts/FreeSans9pt7b.h, directory: common/fonts}
+  - { path: ../../firmware/common/fonts/FreeSansBold18pt7b.h, directory: common/fonts}
+  - { path: ../../firmware/common/fonts/FreeSansBold24pt7b.h, directory: common/fonts}
+  - { path: ../../firmware/common/md5.c, directory: common}
+  - { path: ../../firmware/common/md5.h, directory: common}
+  - { path: ../../firmware/common/uzlib/src/adler32.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/crc32.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/defl_static.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/defl_static.h, directory: common/uzlib/src}
+  - { path: ../../firmware/common/uzlib/src/genlz77.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/tinf.h, directory: common/uzlib/src}
+  - { path: ../../firmware/common/uzlib/src/tinf_compat.h, directory: common/uzlib/src}
+  - { path: ../../firmware/common/uzlib/src/tinfgzip.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/tinflate.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/tinfzlib.c, directory: common/uzlib/src }
+  - { path: ../../firmware/common/uzlib/src/uzlib.h, directory: common/uzlib/src}
+  - { path: ../../firmware/common/uzlib/src/uzlib_conf.h, directory: common/uzlib/src}
+  - { path: ../../firmware/drivers/oepl_display_driver.h, directory: drivers }
+  - { path: ../../firmware/drivers/oepl_display_driver_common.c, directory: drivers }
+  - { path: ../../firmware/drivers/oepl_display_driver_common.h, directory: drivers }
+  - { path: ../../firmware/fonts/fonts.h, directory: fonts}
+  - { path: ../../firmware/fonts/FreeSans9pt7b.c, directory: fonts }
+  - { path: ../../firmware/fonts/FreeSansBold18pt7b.c, directory: fonts }
+  - { path: ../../firmware/fonts/FreeSansBold24pt7b.c, directory: fonts }
+  - { path: ../../firmware/logging.c}
+  - { path: ../../firmware/logging.h}
+  - { path: ../../firmware/oepl_app.c }
+  - { path: ../../firmware/oepl_app.h }
+  - { path: ../../firmware/oepl_compression.cpp }
+  - { path: ../../firmware/oepl_compression.hpp }
+  - { path: ../../firmware/oepl_display.c }
+  - { path: ../../firmware/oepl_display.h }
+  - { path: ../../firmware/oepl_drawing.cpp }
+  - { path: ../../firmware/oepl_drawing.hpp }
+  - { path: ../../firmware/oepl_drawing_capi.h }
+  - { path: ../../firmware/oepl_efr32_hwtypes.h }
+  - { path: ../../firmware/oepl_flash_driver.c }
+  - { path: ../../firmware/oepl_flash_driver.h }
+  - { path: ../../firmware/oepl_hw_abstraction.c }
+  - { path: ../../firmware/oepl_hw_abstraction.h }
+  - { path: ../../firmware/oepl_led.c }
+  - { path: ../../firmware/oepl_led.h }
+  - { path: ../../firmware/oepl_nvm.c }
+  - { path: ../../firmware/oepl_nvm.h }
+  - { path: ../../firmware/oepl_radio.c }
+  - { path: ../../firmware/oepl_radio.h }
+  - { path: ../../firmware/shared/oepl-definitions.h, directory: shared}
+  - { path: ../../firmware/shared/oepl-proto.h, directory: shared }
+  - { path: ../../firmware/sl_iostream_eusart_euart_debug_config.h }
+
+include:
+  - path: ""
+  - path: boilerplate
+  - path: common
+  - path: common/fonts
+  - path: drivers
+  - path: common/uzlib/src
+  - path: shared
+  - path: fonts
+    file_list:
+sdk: { id: gecko_sdk, version: 4.4.1 }
+toolchain_settings:
+  - { value: debug, option: optimize }
+component:
+  - { id: udelay }
+  - { id: mx25_flash_shutdown_usart }
+  - { id: EFR32BG22C224F512IM40 }
+  - { id: bootloader_app_properties }
+  - { id: bootloader_interface }
+  - { id: cpp_support }
+  - { id: device_init }
+  - { id: spidrv_core }
+  - { id: emlib_iadc }
+  - { id: emlib_i2c }
+  - {id: emlib_wdog}
+  - {id: emlib_rmu}
+  - { id: gpiointerrupt }
+  - instance: [euart_debug]
+    id: iostream_eusart
+  - { id: iostream_retarget_stdio }
+  - { id: iostream_stdlib_config }
+  - { id: iostream_usart_core }
+  - { id: mpu }
+  - { id: nvm3_default }
+  - { id: nvm3_default_config }
+  - { id: power_manager }
+  - { id: radio_config_simple_rail_singlephy }
+  - instance: [inst0]
+    id: rail_util_init
+  - { id: rail_util_recommended }
+  - { id: sl_system }
+  - { id: toolchain_gcc_lto }
+template_contribution:
+  - { name: memory_ram_start, priority: 0, value: 536870912 }
+  - { name: memory_ram_size, priority: 0, value: 32768 }
+  # 24576 = bootloader size 24 k
+  - { name: memory_flash_start, priority: 0, value: 24576 }
+  - {name: memory_flash_size, priority: 0, value: 335872}
+requires:
+  - { name: a_radio_config }
+  - condition: [kernel]
+    name: sl_simple_rail_os
+  - condition: [hardware_board_has_eff]
+    name: rail_util_eff
+  - condition: [device_family_fgm23]
+    name: radio_config_singlephy_device_family_fgm23
+configuration:
+  - { name: SL_STACK_SIZE, value: "2048" }
+  - { name: SL_HEAP_SIZE, value: "16384" }
+  - { name: NVM3_DEFAULT_NVM_SIZE, value: "24576" }
+  - { name: SL_BOARD_ENABLE_VCOM, value: "0" }
+  - { name: SL_BOARD_ENABLE_DISPLAY, value: "0" }
+  - { name: SL_BOARD_ENABLE_SENSOR_RHT, value: "0" }
+  - { name: SL_BOARD_DISABLE_MEMORY_SPI, value: "0" }
+  - {
+      name: SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE,
+      value: usartHwFlowControlNone,
+    }
+  - {
+      name: SL_IOSTREAM_EUSART_VCOM_FLOW_CONTROL_TYPE,
+      value: eusartHwFlowControlNone,
+    }
+  - { name: SL_RAIL_UTIL_INIT_INIT_COMPLETE_CALLBACK_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_RADIO_CONFIG_SUPPORT_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_PROTOCOLS_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_PROTOCOL_INST0_DEFAULT,
+      value: SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ,
+    }
+  - { name: SL_RAIL_UTIL_INIT_CALIBRATIONS_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_CALIBRATION_TEMPERATURE_NOTIFY_INST0_ENABLE,
+      value: "1",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_CALIBRATION_ONETIME_NOTIFY_INST0_ENABLE,
+      value: "1",
+    }
+  - { name: SL_RAIL_UTIL_INIT_TRANSITIONS_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_DATA_FORMATS_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENTS_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_TIMING_DETECT_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_TIMING_LOST_INST0_ENABLE, value: "0" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_PREAMBLE_DETECT_INST0_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_PREAMBLE_LOST_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_SYNC1_DETECT_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_SYNC2_DETECT_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_FILTER_PASSED_INST0_ENABLE, value: "0" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_PACKET_RECEIVED_INST0_ENABLE,
+      value: "1",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_ADDRESS_FILTERED_INST0_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_FRAME_ERROR_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_PACKET_ABORTED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_TIMEOUT_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_CHANNEL_HOPPING_COMPLETE_INST0_ENABLE,
+      value: "0",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_DUTY_CYCLE_RX_END_INST0_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_PACKET_SENT_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_ABORTED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_BLOCKED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_STARTED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RSSI_AVERAGE_DONE_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_FIFO_ALMOST_FULL_INST0_ENABLE,
+      value: "1",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_FIFO_FULL_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_FIFO_OVERFLOW_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_TX_FIFO_ALMOST_EMPTY_INST0_ENABLE,
+      value: "1",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_UNDERFLOW_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_CHANNEL_CLEAR_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_CHANNEL_BUSY_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_CCA_RETRY_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TX_START_CCA_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_TX_SCHEDULED_RX_TX_STARTED_INST0_ENABLE,
+      value: "0",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_SCHEDULED_RX_END_INST0_ENABLE,
+      value: "0",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_RX_SCHEDULED_RX_MISSED_INST0_ENABLE,
+      value: "0",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_TX_SCHEDULED_TX_MISSED_INST0_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_RX_ACK_TIMEOUT_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TXACK_PACKET_SENT_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TXACK_ABORTED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TXACK_BLOCKED_INST0_ENABLE, value: "1" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_TXACK_UNDERFLOW_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_IEEE802154_DATA_REQUEST_COMMAND_INST0_ENABLE,
+      value: "1",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_ZWAVE_BEAM_INST0_ENABLE, value: "0" }
+  - {
+      name: SL_RAIL_UTIL_INIT_EVENT_CONFIG_UNSCHEDULED_INST0_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_CONFIG_SCHEDULED_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_SCHEDULER_STATUS_INST0_ENABLE, value: "0" }
+  - { name: SL_RAIL_UTIL_INIT_EVENT_CAL_NEEDED_INST0_ENABLE, value: "1" }
+  - {
+      name: SL_RAIL_UTIL_INIT_TRANSITION_INST0_TX_SUCCESS,
+      value: "RAIL_RF_STATE_RX",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_TRANSITION_INST0_TX_ERROR,
+      value: "RAIL_RF_STATE_RX",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_TRANSITION_INST0_RX_SUCCESS,
+      value: "RAIL_RF_STATE_RX",
+    }
+  - {
+      name: SL_RAIL_UTIL_INIT_TRANSITION_INST0_RX_ERROR,
+      value: "RAIL_RF_STATE_RX",
+    }
+  - { name: SL_RAIL_UTIL_PROTOCOL_BLE_ENABLE, value: "0" }
+  - {
+      name: SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_PROMISCUOUS_MODE_ENABLE,
+      value: "0",
+    }
+  - {
+      name: SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_ACCEPT_ACK_FRAME_ENABLE,
+      value: "0",
+    }
+  - { name: SL_RAIL_UTIL_PTI_MODE, value: "RAIL_PTI_MODE_DISABLED" }
+  - {
+      name: SL_IOSTREAM_EUSART_EUART_DEBUG_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION,
+      value: "0",
+    }
+## NB: Be careful when editing the following line!!  it is processed by AWK
+##     and extra spaces will case the version to be extracted incorrectly !
+  - {name: SL_APPLICATION_VERSION, value: '42'}
+config_file:
+  - path: ../../firmware/sl_iostream_eusart_euart_debug_config.h
+    override:
+      component: iostream_eusart
+      file_id: iostream_eusart_config
+define:
+# - { name: DEBUG_MAX_SLEEP, value: "5" }
+  - { name: CUSTOM_BUILD, value: 1 }
+  - { name: CABLE_AT_BOTTOM, value: 0 }
+  - { name: SL_MX25_FLASH_SHUTDOWN_PERIPHERAL, value: "USART0" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_PERIPHERAL_NO, value: 0 }
+  - { name: SL_MX25_FLASH_SHUTDOWN_TX_PORT, value: "gpioPortC" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_PERIPHERAL, value: "gpioPortC" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_TX_PIN, value: "0" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_RX_PORT, value: "gpioPortC" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_RX_PIN, value: "1" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_CLK_PORT, value: "gpioPortC" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_CLK_PIN, value: "2" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_CS_PORT, value: "gpioPortA" }
+  - { name: SL_MX25_FLASH_SHUTDOWN_CS_PIN, value: "4" }
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_PERIPHERAL, value: "EUART0"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_PERIPHERAL_NO, value: "0"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_TX_PORT, value: "gpioPortB"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_TX_PIN, value: "2"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_RX_PORT, value: "gpioPortB"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_RX_PIN, value: "3"}
+  - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_CONVERT_BY_DEFAULT_LF_TO_CRLF, value: "0"}
+
