@@ -43,6 +43,7 @@
 #define OEPL_EFR32XG22_HWTYPE_DISPLAYDATA_SUFIFT27PL4A  (0x05)
 #define OEPL_EFR32XG22_HWTYPE_CUSTOM_9_7                (0x06)
 #define OEPL_EFR32XG22_HWTYPE_MODCHIP_HD150             (0x07)
+#define OEPL_EFR32XG22_HWTYPE_SESIMAGOTAG_EL042TS1      (0x08)
 // ----- Add new HW types here and keep in sync with bootloader ----
 
 // ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----
@@ -71,6 +72,7 @@ typedef enum {
   DISPLAYDATA_SUFIFT27PL4A  = OEPL_EFR32XG22_HWTYPE_DISPLAYDATA_SUFIFT27PL4A,
   CUSTOM_9_7                = OEPL_EFR32XG22_HWTYPE_CUSTOM_9_7,
   MODCHIP_HD150             = OEPL_EFR32XG22_HWTYPE_MODCHIP_HD150,
+  SESIMAGOTAG_EL042TS1      = OEPL_EFR32XG22_HWTYPE_SESIMAGOTAG_EL042TS1,
   // ----- Add new HW types here and keep in sync with bootloader ----
 
   // ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----
@@ -97,6 +99,7 @@ typedef enum {
   EPD_SOLUM_AUTODETECT,
   EPD_SEEED_264_176_BWR,
   EPD_HD150,
+  EPD_SESIMAGOTAG_EL042TS1,
 } oepl_efr32xg22_displaytype_t;
 
 typedef struct {
@@ -144,6 +147,11 @@ typedef struct {
   oepl_efr32xg22_gpio_t green;
   oepl_efr32xg22_gpio_t blue;
   oepl_efr32xg22_gpio_t white;
+  // Optional LED-circuit enable/gate. Some boards (e.g. SES-imagotag
+  // EL042TS1) wire the colour-channel MOSFETs' common rail through an
+  // extra MCU pin that must be driven HIGH before any LED will emit.
+  // Leave as GPIO_UNUSED (port == gpioPortInvalid) when not present.
+  oepl_efr32xg22_gpio_t gate;
 } oepl_efr32xg22_ledconfig_t;
 
 typedef struct {

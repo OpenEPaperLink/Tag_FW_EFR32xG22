@@ -9,6 +9,9 @@
 // For debugprint
 #include "oepl_hw_abstraction.h"
 
+// For per-tag init variants (see the 400x300 branch in display_reinit).
+#include "oepl_efr32_hwtypes.h"
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -180,11 +183,20 @@ static void display_sleep(void)
 
 static void display_refresh_and_wait(void)
 {
-  if((params->x_res_effective == 168 && params->y_res_effective == 384) ||
-     (params->x_res_effective == 184 && params->y_res_effective == 360) ||
-     (params->x_res_effective == 200 && params->y_res_effective == 200) ||
-     (params->x_res_effective == 160 && params->y_res_effective == 296) ||
-     (params->x_res_effective == 400 && params->y_res_effective == 300)) {
+  // SES-imagotag EL042TS1 does its PON in display_reinit (before DTM1),
+  // so skip the PON here for that displaytype to avoid a second power-
+  // cycle that would reset the frame RAM we just wrote.
+  const oepl_efr32xg22_tagconfig_t* tagcfg_pon = oepl_efr32xg22_get_config();
+  bool skip_pon_here =
+    (tagcfg_pon != NULL && tagcfg_pon->display != NULL &&
+     tagcfg_pon->display->type == EPD_SESIMAGOTAG_EL042TS1);
+
+  if(!skip_pon_here &&
+     ((params->x_res_effective == 168 && params->y_res_effective == 384) ||
+      (params->x_res_effective == 184 && params->y_res_effective == 360) ||
+      (params->x_res_effective == 200 && params->y_res_effective == 200) ||
+      (params->x_res_effective == 160 && params->y_res_effective == 296) ||
+      (params->x_res_effective == 400 && params->y_res_effective == 300))) {
     oepl_display_driver_wait(10);
     DPRINTF("Turn on EPD power rails\n");
     EMIT_INSTRUCTION_STATIC_DATA(0x04, {0x00});
@@ -259,6 +271,31 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
     oepl_display_driver_wait(300);
   } else if(params->x_res_effective == 400 && params->y_res_effective == 300) {
+    const oepl_efr32xg22_tagconfig_t* tagcfg = oepl_efr32xg22_get_config();
+    bool is_sesimagotag_el042ts1 =
+      (tagcfg != NULL && tagcfg->display != NULL &&
+       tagcfg->display->type == EPD_SESIMAGOTAG_EL042TS1);
+
+    if (is_sesimagotag_el042ts1) {
+      // SES-imagotag EL042TS1 (4.2" BWRY, JD79653-family). Reverse-
+      // engineered on-bench; values from EL042TS1_DRIVER.md.
+      //
+      // CRITICAL SEQUENCING: this panel requires PON BEFORE DTM1. The
+      // standard OEPL flow (DTM1 in display_draw, PON in
+      // display_refresh_and_wait) produces banded noise on this panel,
+      // because the chip's frame RAM isn't ready to accept DTM1 writes
+      // until PON has turned on the booster rails. We therefore issue
+      // PON at the end of display_reinit here, and display_refresh_and_wait
+      // skips its own PON for this displaytype.
+      EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x03, 0x00, 0x2B, 0x2B, 0x03});   // PWR
+      EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x17, 0x17, 0x17});                 // BTST
+      EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x3F, 0x09});                       // PSR (2 bytes)
+      EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+      EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x97});                             // CDI
+      EMIT_INSTRUCTION_NO_DATA(0x04);                                          // PON (before DTM1)
+      sl_udelay_wait(500);
+      oepl_display_driver_wait_busy(4000, true);
+    } else {
     // From captured waveform https://github.com/OpenEPaperLink/Tag_FW_EFR32xG22/pull/16
     EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});
     EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x26, 0x78, 0x24, 0x26});
@@ -280,6 +317,7 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    }
   } else if(params->x_res_effective == 800 && params->y_res_effective == 480) {
     // From Waveshare 800x480 sample
     //   https://github.com/waveshareteam/e-Paper/blob/master/E-paper_Separate_Program/7in5_e-Paper_H/ESP32/EPD_7in5h.cpp

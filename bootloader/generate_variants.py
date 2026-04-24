@@ -45,6 +45,18 @@ variant_map = [
         "variant_idbyte": "0x07"
     },
     {
+        # SES-imagotag EL042TS1 (4.2" BWY). No external flash identified
+        # on this tag; for first bring-up we reuse the Solum bootloader
+        # base, which targets xG22 and configures port C for SPI flash.
+        # SFDP detection will fail (no flash present) and the bootloader
+        # will boot the app. The app's display driver pulses RST in init,
+        # clearing any garbage the bootloader's SPI traffic left on the
+        # panel bus. Revisit with a dedicated BTL_TYPE if runtime issues.
+        "variant_name": "SESIMAGOTAG_EL042TS1",
+        "variant_base": "Solum_SPIF_BTL.s37",
+        "variant_idbyte": "0x08"
+    },
+    {
         "variant_name": "DEVELOPMENT_0",
         "variant_base": "Development_SPIF_BTL.s37",
         "variant_idbyte": "0xF0",

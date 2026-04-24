@@ -277,6 +277,12 @@ void oepl_hw_init(void)
 
   // Setup led(s)
   if(tagconfig->led) {
+    // Some tags (e.g. SES-imagotag EL042TS1) gate the LED MOSFETs through
+    // a shared enable pin. Drive it HIGH before configuring the colour
+    // channels so the first LED pulse isn't swallowed by a still-LOW gate.
+    if(tagconfig->led->gate.port != gpioPortInvalid) {
+      GPIO_PinModeSet(tagconfig->led->gate.port, tagconfig->led->gate.pin, gpioModePushPull, 1);
+    }
     if(tagconfig->led->white.port != gpioPortInvalid) {
       GPIO_PinModeSet(tagconfig->led->white.port, tagconfig->led->white.pin, gpioModePushPull, 1);
       white_hwval =  0x80 | tagconfig->led->white.port << 4| tagconfig->led->white.pin;

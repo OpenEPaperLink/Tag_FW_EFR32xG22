@@ -47,6 +47,20 @@ static const oepl_efr32xg22_flashconfig_t flashconfig_modchip =
   .EN = GPIO_UNUSED
 };
 
+static const oepl_efr32xg22_flashconfig_t flashconfig_sesimagotag_el042ts1 =
+{
+  // External flash on this tag is not yet identified. Build with the
+  // USART reference kept so the driver compiles, but all pins unused
+  // so no I/O takes place. If OEPL needs external flash at runtime,
+  // probe the board and fill these in.
+  .usart = USART0,
+  .MOSI = GPIO_UNUSED,
+  .MISO = GPIO_UNUSED,
+  .SCK = GPIO_UNUSED,
+  .nCS = GPIO_UNUSED,
+  .EN = GPIO_UNUSED
+};
+
 // ----- Add new flash pinouts here and keep in sync with bootloader ----
 
 // ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----
@@ -126,7 +140,8 @@ static const oepl_efr32xg22_ledconfig_t ledconfig_brd4402b = {
   .white = {.port = gpioPortD, .pin = 3},
   .blue = GPIO_UNUSED,
   .red = GPIO_UNUSED,
-  .green = GPIO_UNUSED
+  .green = GPIO_UNUSED,
+  .gate = GPIO_UNUSED
 };
 
 static const oepl_efr32xg22_debugconfig_t debugconfig_brd4402b_swo = {
@@ -213,7 +228,8 @@ static const oepl_efr32xg22_ledconfig_t ledconfig_solum = {
   .white = GPIO_UNUSED,
   .blue = {.port = gpioPortC, .pin = 5},
   .red = {.port = gpioPortC, .pin = 6},
-  .green = {.port = gpioPortC, .pin = 7}
+  .green = {.port = gpioPortC, .pin = 7},
+  .gate = GPIO_UNUSED
 };
 
 static const oepl_efr32xg22_nfcconfig_t nfcconfig_solum = {
@@ -280,7 +296,8 @@ static const oepl_efr32xg22_ledconfig_t ledconfig_modchip = {
   .white = GPIO_UNUSED,
   .blue = GPIO_UNUSED,
   .red = GPIO_UNUSED,
-  .green = GPIO_UNUSED
+  .green = GPIO_UNUSED,
+  .gate = GPIO_UNUSED
 };
 
 static const oepl_efr32xg22_debugconfig_t debugconfig_modchip = {
@@ -308,6 +325,89 @@ static const oepl_efr32xg22_tagconfig_t tagconfig_modchip_hd150 = {
 };
 
 // -----------------------------------------------------------------------------
+//                           SES-imagotag EL042TS1 (4.2" BWY, JD family)
+// -----------------------------------------------------------------------------
+// Pin map verified on bench 2026-04-24. Full driver reference lives at
+// ~/personal_repos/epaper_tag/EL042TS1_DRIVER.md (outside this repo).
+//
+// Display bus:   MOSI=PC00, SCK=PC01, nCS=PC02, DC=PC03, nRST=PC04, BUSY=PA07
+// Special:       BS (SPI-mode select) on PC06 MUST be held LOW during SPI
+//                activity. Handled via the `.enable` field with
+//                `idle_state = 1` — common_init briefly drives HIGH before
+//                any SPI happens, common_activate drives LOW for all SPI
+//                (including the RST pulse that latches BS=LOW → 4-wire),
+//                common_deactivate pulls up HIGH after POF. See the detour
+//                writeup at project_pc06_bs_rootcause.md in the bench repo.
+// LEDs:          PB01=green, PB02=red, PB03=blue, PB04=white. All gated
+//                through PC07 (must be HIGH for LEDs to emit). Handling
+//                of the gate pin is a TODO — not yet wired in this port.
+// No button:     confirmed absent on this tag (NFC/RF wake only).
+// External flash: not yet identified. flashconfig pins all GPIO_UNUSED.
+// Debug:         SWO for now, no UART pad identified.
+
+static const oepl_efr32xg22_displayconfig_t displayconfig_sesimagotag_el042ts1 =
+{
+  .usart = USART0,
+  .usart_clock = cmuClock_USART0,
+  .MOSI = {.port = gpioPortC, .pin = 0},
+  .MISO = GPIO_UNUSED,
+  .SCK = {.port = gpioPortC, .pin = 1},
+  .nCS = {.port = gpioPortC, .pin = 2},
+  .nCS2 = GPIO_UNUSED,
+  .DC = {.port = gpioPortC, .pin = 3},
+  .BUSY = {.port = gpioPortA, .pin = 7},
+  .nRST = {.port = gpioPortC, .pin = 4},
+  // Hijacking .enable to pin PC06 (BS) LOW during SPI. See header comment.
+  .enable = {.port = gpioPortC, .pin = 6, .idle_state = 1},
+  .type = EPD_SESIMAGOTAG_EL042TS1
+};
+
+static const oepl_efr32xg22_pinconfig_t pinconfig_sesimagotag_el042ts1 = {
+  .gpio = GPIO_UNUSED,
+  // NFC FD pin not yet identified. Candidates: PD02, PD03 (un-probed).
+  .nfc_fd = GPIO_UNUSED,
+  .nfc_fd_em4wuval = 0,
+  .button1 = GPIO_UNUSED,
+  .button1_em4wuval = 0,
+  .button2 = GPIO_UNUSED,
+  .button2_em4wuval = 0
+};
+
+static const oepl_efr32xg22_ledconfig_t ledconfig_sesimagotag_el042ts1 = {
+  .red    = {.port = gpioPortB, .pin = 2},
+  .green  = {.port = gpioPortB, .pin = 1},
+  .blue   = {.port = gpioPortB, .pin = 3},
+  .white  = {.port = gpioPortB, .pin = 4},
+  // PC07 is the common gate for the RGB+W MOSFETs on this tag.
+  // Must be driven HIGH for the PB01..PB04 channels to actually emit.
+  .gate   = {.port = gpioPortC, .pin = 7}
+};
+
+static const oepl_efr32xg22_debugconfig_t debugconfig_sesimagotag_el042ts1 = {
+  .type = DBG_SWO,
+  .output = {
+    .euart = {
+      .tx = GPIO_UNUSED,
+      .rx = GPIO_UNUSED,
+      .rts = GPIO_UNUSED,
+      .cts = GPIO_UNUSED,
+      .enable = GPIO_UNUSED
+    }
+  }
+};
+
+static const oepl_efr32xg22_tagconfig_t tagconfig_sesimagotag_el042ts1 = {
+  .hwtype = SESIMAGOTAG_EL042TS1,
+  .oepl_hwid = SOLUM_M3_BWRY_42,
+  .flash = &flashconfig_sesimagotag_el042ts1,
+  .display = &displayconfig_sesimagotag_el042ts1,
+  .gpio = &pinconfig_sesimagotag_el042ts1,
+  .led = &ledconfig_sesimagotag_el042ts1,
+  .nfc = NULL,
+  .debug = &debugconfig_sesimagotag_el042ts1
+};
+
+// -----------------------------------------------------------------------------
 //                           Other hardware
 // -----------------------------------------------------------------------------
 // ----- Add new HW types here ----
@@ -323,6 +423,7 @@ static const oepl_efr32xg22_tagconfig_t* tagdb[] = {
   &tagconfig_brd4402b_epd,
   &tagconfig_solum,
   &tagconfig_modchip_hd150,
+  &tagconfig_sesimagotag_el042ts1,
 };
 
 const oepl_efr32xg22_tagconfig_t* oepl_efr32xg22_get_config(void)
@@ -696,6 +797,24 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
     displayparams->mirrorX = false;
     displayparams->mirrorY = false;
     displayparams->ctrl = CTRL_GDEW0583Z83;
+    return true;
+  } else if(tagcfg->display->type == EPD_SESIMAGOTAG_EL042TS1) {
+    // SES-imagotag EL042TS1: 400x300 BWY, JD-family controller.
+    // No autodetect via userdata — this tag's userdata format predates
+    // the Solum unification (offset 0x09 reads 0x30 on-bench, not the
+    // 0x2B Solum uses for JD 4.2"), so we hardcode the params.
+    displayparams->xres = 400;
+    displayparams->yres = 300;
+    displayparams->xres_working = 400;
+    displayparams->yres_working = 300;
+    displayparams->xoffset = 0;
+    displayparams->yoffset = 0;
+    displayparams->have_thirdcolor = true;
+    displayparams->have_fourthcolor = true;   // BWRY: black/white/red/yellow
+    displayparams->swapXY = false;
+    displayparams->mirrorX = false;
+    displayparams->mirrorY = false;
+    displayparams->ctrl = CTRL_JD;
     return true;
   // ----- Add new HW types here ----
 
