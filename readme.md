@@ -29,7 +29,7 @@ For building in Docker:
 
 For flashing firmware:
 - [Simplicity Commander](https://www.silabs.com/developers/simplicity-studio/simplicity-commander) or a debug probe of your choice with support for EFR32BG22
-  - Note that in order to unlock factory-locked devices (such as Solum), you will need a JLink-based debugger
+  - Note that in order to unlock factory-locked devices (such as Solum), you will preferably need a JLink-based debugger, alternatively a DAPLink (see note on DAPLink support)
 - The correct wiring between your debug probe and your device's debug port.
  
 See [the wiki](https://github.com/OpenEPaperLink/OpenEPaperLink/wiki/Flashing-SiLabs-based-M3-Newton-Displays) for more details on the firmware flashing process.
@@ -80,3 +80,20 @@ chip (as this function intended).
 Unlocking is best done using Simplicity Commander (works with any J-Link based probe).
 Use 'unlock debug access' in the 'flash' tab in the GUI, or issue the command
 `commander device unlock`.
+
+### Using a DAPLink-based debugger
+Alternatively, a PyOCD-based script is available, which is less robust, but should be
+compatible with any JLink or DAPLink debug adapter.
+
+- First, install the python dependencies:
+  - `python -m pip install -r requirements.txt`
+- Then you can use `reflash.py` to interact through a JLink or DAPLink connection.
+  See the script's help output for more commands.
+  - To unlock a device:
+    - `python reflash.py -u`
+  - To dump the contents of the UserData section:
+    - `python reflash.py --dump-ud`
+  - To flash the latest SoluM firmware from the `full_binaries` folder:
+    - `python reflash.py -f latest`
+  - To do all this at once:
+    - `python reflash.py -u --dump-ud -f latest`
