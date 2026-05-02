@@ -154,7 +154,7 @@ def main(argv):
     'adi.v5.max_invalid_ap_count': 0,
     'scan_all_aps': False,
     'target_override': a.device,
-    'jlink.device': a.device
+    'allow_no_cores': True
   }
   try:
     session = Session(probe, options=options)
@@ -203,6 +203,12 @@ def main(argv):
         print("Issuing unlock & erase command")
       dci.execute_command(0x430f0000, timeout=2000, verbose=a.verbose)
 
+
+  # Create new session, now we should be able to detect the cores, otherwise we won't be able to flash
+  options['allow_no_cores'] = False
+  options['jlink.device'] = a.device
+  session = Session(probe, options=options)
+  with session:
     if a.dump_ud:
       ud_content = session.target.read_memory_block32(0x0fe00000, 0x100)
       print("Content of UD:")
@@ -265,7 +271,7 @@ def main(argv):
                            skip=False,
                            file_format=None)
         time.sleep(0.5)
-        session.target.reset(reset_type=Target.ResetType.HARDWARE)
+        session.target.reset(reset_type=Target.ResetType.NSRST)
       finally:
         if converted:
           os.remove(hexpath)
