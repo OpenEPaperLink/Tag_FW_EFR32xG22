@@ -81,6 +81,74 @@ class DCI:
     return rsp
 
 
+def get_session(device : str, detect_cores : bool, adapter : str | None, list_adapters : bool = False, verbose : bool = False) -> Session | None:
+  # Start by figuring out how to connect
+  probes = ConnectHelper.get_all_connected_probes(blocking=False)
+  if list_adapters or verbose:
+    print("Detected adapters:")
+    for probe in probes:
+      print(f"\tID {probe.unique_id} - {probe.description}")
+    if len(probes) == 0:
+      print("\tNo adapters found")
+
+    if list_adapters:
+      return None
+
+  if len(probes) == 0:
+    raise KeyError("No PyOCD adapters connected to this system")
+
+  probe = None
+  if len(probes) == 1:
+    probe = probes[0]
+  elif not adapter:
+    raise ValueError("More than 1 adapter detected, but no adapter specified")
+  else:
+    for candidate in probes:
+      if candidate.unique_id == adapter:
+        probe = candidate
+
+  if not probe:
+    raise KeyError(f"Probe with ID {adapter} not connected")
+
+  # Try to open a session with the target, and install pack support if needed
+  options = {
+    # Some APs are regarded as nonconforming by PyOCD, so tell it to stick to AP0 on error
+    'adi.v5.max_invalid_ap_count': 0,
+    'scan_all_aps': False,
+    'target_override': device,
+    'allow_no_cores': not detect_cores
+  }
+
+  if detect_cores:
+    options['jlink.device'] = device
+  try:
+    return Session(probe, options=options)
+  except TargetSupportError:
+    print("Target support not found, trying to automatically install...")
+    args = argparse.Namespace(
+      update=True,
+      patterns=["{}*".format(a.device[:9].upper())],
+      verbose=0,
+      quiet=0,
+      clean=False,
+      no_download=False
+    )
+    cmd = pack_cmd.PackInstallSubcommand(args)
+    cmd.invoke()
+    print("Retrying...")
+    return Session(probe, options=options)
+
+
+def reset_target(session : Session) -> None:
+  session.probe.open()
+  time.sleep(0.2)
+  session.probe.assert_reset(True)
+  time.sleep(0.1)
+  session.probe.assert_reset(False)
+  time.sleep(0.2)
+  session.probe.close()
+
+
 def main(argv):
   # Configure the argument parser
   parser = argparse.ArgumentParser(description="PyOCD-based flashing, erasing and debug-unlocking of EFR32xG2x devices")
@@ -120,58 +188,10 @@ def main(argv):
                       help="Print verbose output")
   a = parser.parse_args(argv)
 
-  # Start by figuring out how to connect
-  probes = ConnectHelper.get_all_connected_probes(blocking=False)
-  if a.list_adapters or a.verbose:
-    print("Detected adapters:")
-    for probe in probes:
-      print(f"\tID {probe.unique_id} - {probe.description}")
-    if len(probes) == 0:
-      print("\tNo adapters found")
+  session = get_session(a.device, False, a.adapter, list_adapters=a.list_adapters, verbose=a.verbose)
 
-    if a.list_adapters:
-      return 0
-
-  if len(probes) == 0:
-    raise KeyError("No PyOCD adapters connected to this system")
-
-  probe = None
-  if len(probes) == 1:
-    probe = probes[0]
-  elif not a.adapter:
-    raise ValueError("More than 1 adapter detected, but no adapter specified")
-  else:
-    for candidate in probes:
-      if candidate.unique_id == a.adapter:
-        probe = candidate
-
-  if not probe:
-    raise KeyError(f"Probe with ID {a.adapter} not connected")
-
-  # Try to open a session with the target, and install pack support if needed
-  options = {
-    # Some APs are regarded as nonconforming by PyOCD, so tell it to stick to AP0 on error
-    'adi.v5.max_invalid_ap_count': 0,
-    'scan_all_aps': False,
-    'target_override': a.device,
-    'allow_no_cores': True
-  }
-  try:
-    session = Session(probe, options=options)
-  except TargetSupportError:
-    print("Target support not found, trying to automatically install...")
-    args = argparse.Namespace(
-        update=True,
-        patterns=["{}*".format(a.device[:9].upper())],
-        verbose=0,
-        quiet=0,
-        clean=False,
-        no_download=False
-    )
-    cmd = pack_cmd.PackInstallSubcommand(args)
-    cmd.invoke()
-    print("Retrying...")
-    session = Session(probe, options=options)
+  if not session:
+    return 0
 
   # Should have a session now, check whether the DCI AP is alive
   with session:
@@ -203,11 +223,10 @@ def main(argv):
         print("Issuing unlock & erase command")
       dci.execute_command(0x430f0000, timeout=2000, verbose=a.verbose)
 
+  reset_target(session)
 
   # Create new session, now we should be able to detect the cores, otherwise we won't be able to flash
-  options['allow_no_cores'] = False
-  options['jlink.device'] = a.device
-  session = Session(probe, options=options)
+  session = get_session(a.device, True, a.adapter, verbose=a.verbose)
   with session:
     if a.dump_ud:
       ud_content = session.target.read_memory_block32(0x0fe00000, 0x100)
@@ -270,13 +289,14 @@ def main(argv):
                            base_address=None,
                            skip=False,
                            file_format=None)
-        time.sleep(0.5)
-        session.target.reset(reset_type=Target.ResetType.NSRST)
+        time.sleep(0.1)
       finally:
         if converted:
           os.remove(hexpath)
 
       print(f"Wrote firmware {fwpath} at 0x{min_address:08x}")
+
+  reset_target(session)
 
   return 0
 
