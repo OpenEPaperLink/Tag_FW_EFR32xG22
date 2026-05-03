@@ -165,7 +165,9 @@ void oepl_hw_init(void)
   #if SL_CATALOG_IOSTREAM_RTT_PRESENT
   extern sl_iostream_instance_info_t sl_iostream_instance_rtt_info;
   #endif
+#if __has_include("sl_debug_swo.h")
   extern sl_iostream_instance_info_t sl_iostream_instance_swo_info;
+#endif
 
   if(tagconfig->debug->type != DBG_SWO) {
     // Stop messing with the SWO pin as we may be reusing it somewhere else
@@ -182,9 +184,11 @@ void oepl_hw_init(void)
   // Set the requested debug print output
   switch(tagconfig->debug->type)
   {
+#if __has_include("sl_debug_swo.h")
     case DBG_SWO:
       sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
       break;
+#endif
     #if SL_CATALOG_IOSTREAM_RTT_PRESENT
     case DBG_RTT:
       sl_iostream_set_system_default(sl_iostream_instance_rtt_info.handle);
@@ -520,6 +524,7 @@ void oepl_hw_init(void)
     oepl_nvm_factory_reset(oepl_efr32xg22_get_oepl_hwid());
   }
 
+#ifndef CUSTOM_BUILD
   if(oepl_nvm_setting_get(OEPL_HWID, &hwid, sizeof(hwid)) != NVM_SUCCESS) {
     // Clean our slate
     DPRINTF("Need to autodetect, lost NVM\n");
@@ -528,6 +533,9 @@ void oepl_hw_init(void)
 
   // Cache our HWID
   oepl_nvm_setting_get(OEPL_HWID, &hwid, sizeof(hwid));
+#else
+ hwid = oepl_efr32xg22_get_oepl_hwid();
+#endif
   DPRINTF("Hello OEPL tag type 0x%02x\n", hwid);
 
   size_t slots, slot_size;

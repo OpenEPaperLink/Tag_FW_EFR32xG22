@@ -4,7 +4,9 @@
 #include <string.h>
 
 #include "common/uzlib/src/uzlib.h"
+#if __has_include("common/QRCode/src/qrcode.h")
 #include "common/QRCode/src/qrcode.h"
+#endif
 
 #define EEPROM_XFER_BLOCKSIZE 512  // shouldn't be any less than 256 bytes probably
 #define DRAWITEM_LIST_SIZE 24
@@ -77,6 +79,7 @@ void C_addFlashImage(uint16_t x, uint16_t y, uint8_t color, rotation_t ro, const
 
 void C_addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char *c, ...)
 {
+#if __has_include("common/QRCode/src/qrcode.h")
   char out_buffer[256];
   va_list lst;
   va_start(lst, c);
@@ -84,6 +87,7 @@ void C_addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char 
   va_end(lst);
 
   return addQR(x, y, version, scale, out_buffer);
+#endif
 }
 
 void C_drawRoundedRectangle(uint16_t xpos, uint16_t ypos, uint16_t width, uint16_t height, uint8_t color)
@@ -186,6 +190,7 @@ void addFlashImage(uint16_t x, uint16_t y, uint8_t color, enum rotation ro, cons
 }
 
 void addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char *c, ...) {
+#if __has_include("common/QRCode/src/qrcode.h")
     char out_buffer[256];
     va_list lst;
     va_start(lst, c);
@@ -238,6 +243,7 @@ void addQR(uint16_t x, uint16_t y, uint8_t version, uint8_t scale, const char *c
 
     di->checkBounds();
     di->addToList();
+#endif
 }
 
 void drawImageWithType(uint32_t addr, uint8_t type, uint32_t filesize) {
