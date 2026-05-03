@@ -272,7 +272,7 @@ configuration:
       value: "0",
     }
 ## NB: Be careful when editing the following line!!  it is processed by AWK
-##     and extra spaces will case the version to be extracted incorrectly !
+##     and extra spaces will cause the version to be extracted incorrectly !
   - {name: SL_APPLICATION_VERSION, value: '42'}
 config_file:
   - path: ../../firmware/sl_iostream_eusart_euart_debug_config.h
@@ -280,7 +280,6 @@ config_file:
       component: iostream_eusart
       file_id: iostream_eusart_config
 define:
-# - { name: DEBUG_MAX_SLEEP, value: "5" }
   - { name: CUSTOM_BUILD, value: 1 }
   - { name: CABLE_AT_BOTTOM, value: 0 }
   - { name: SL_MX25_FLASH_SHUTDOWN_PERIPHERAL, value: "USART0" }
