@@ -148,7 +148,9 @@ template_contribution:
 - {name: memory_ram_start, priority: 0, value: 536870912}
 - {name: memory_ram_size, priority: 0, value: 32768}
 - {name: memory_flash_start, priority: 0, value: 24576}
-- {name: memory_flash_size, priority: 0, value: 335872}
+# 256 kB part (SES-imagotag EL042TS1): app + NVM3 end at 0x38000, the
+# remaining 32 kB up to 0x40000 is the internal image storage slot.
+- {name: memory_flash_size, priority: 0, value: 204800}
 requires:
 - {name: a_radio_config}
 - condition: [kernel]
@@ -229,7 +231,7 @@ configuration:
 - {name: SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_ACCEPT_ACK_FRAME_ENABLE, value: '0'}
 - {name: SL_RAIL_UTIL_PTI_MODE, value: 'RAIL_PTI_MODE_DISABLED'}
 - {name: SL_IOSTREAM_EUSART_EUART_DEBUG_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION, value: '0'}
-- {name: SL_APPLICATION_VERSION, value: '43'}
+- {name: SL_APPLICATION_VERSION, value: '11016'}
 config_file:
   - path: sl_iostream_eusart_euart_debug_config.h
     override:

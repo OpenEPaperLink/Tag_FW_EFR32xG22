@@ -152,6 +152,11 @@ typedef struct {
   // extra MCU pin that must be driven HIGH before any LED will emit.
   // Leave as GPIO_UNUSED (port == gpioPortInvalid) when not present.
   oepl_efr32xg22_gpio_t gate;
+  // Channel polarity. Default (false) is the classic direct-drive wiring
+  // where the pin sinks current: LOW = LED on. Boards that switch the
+  // LEDs through low-side MOSFETs (e.g. SES-imagotag EL042TS1) need
+  // true: HIGH = LED on.
+  bool active_high;
 } oepl_efr32xg22_ledconfig_t;
 
 typedef struct {

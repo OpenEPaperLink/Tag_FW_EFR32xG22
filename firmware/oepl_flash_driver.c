@@ -52,8 +52,11 @@ uint32_t HAL_flashRead(uint32_t address, uint8_t *buffer, uint32_t num)
 {
   init_flashdriver();
 
-  if(cfg == NULL || cfg->flash == NULL) {
-    oepl_hw_crash(DBG_FLASH, false, "Unknown flash configuration\n");
+  if(cfg == NULL || cfg->flash == NULL || cfg->flash->nCS.port == gpioPortInvalid) {
+    // No external flash on this tag: bulk storage lives in internal
+    // flash, which is memory-mapped — read it directly.
+    memcpy(buffer, (const void*)address, num);
+    return num;
   }
 
   setup_spi();

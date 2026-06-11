@@ -92,6 +92,10 @@ static const oepl_display_driver_desc_t* driver = NULL;
 void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
 {
   switch(driverconfig->ctrl) {
+    // Small-flash builds keep only the JD driver; the others serve
+    // panels that don't appear on small-flash targets, and dropping
+    // them frees a significant amount of flash.
+#if !defined(OEPL_SMALL_FLASH)
     case CTRL_MEMLCD:
       driver = &oepl_display_driver_memlcd;
       break;
@@ -110,9 +114,11 @@ void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
     case CTRL_UCBWRY:
       driver = &oepl_display_driver_ucbwry;
       break;
+#endif
     case CTRL_JD:
       driver = &oepl_display_driver_jd;
       break;
+#if !defined(OEPL_SMALL_FLASH)
     case CTRL_INTERLEAVED:
       driver = &oepl_display_driver_interleaved;
       break;
@@ -131,6 +137,7 @@ void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
     case CTRL_GDEW0583Z83:
       driver = &oepl_display_driver_gdew0583z83;
       break;
+#endif
     default:
       oepl_hw_crash(DBG_DISPLAY, false, "Error: Lacking display driver implementation\n");
       return;
@@ -521,7 +528,9 @@ static void add_rendered_content_splash(void)
       C_epdSetFont(&FreeSans9pt7b);
       C_epdPrintf(xres - 17, 310, COLOR_BLACK, ROTATE_270, "FW: %04X-%s", fw, suffix);
       C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+#if !defined(OEPL_SMALL_FLASH)
       C_addFlashImage(293, 61, COLOR_BLACK, ROTATE_0, newton);
+#endif
       C_addQR(40, 120, 3, 7, "https://openepaperlink.eu/tag/0/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       break;
     case SOLUM_M3_BWR_75:
@@ -537,7 +546,9 @@ static void add_rendered_content_splash(void)
       C_epdSetFont(&FreeSans9pt7b);
       C_epdPrintf(xres - 17, 310, COLOR_BLACK, ROTATE_270, "FW: %04X-%s", fw, suffix);
       C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+#if !defined(OEPL_SMALL_FLASH)
       C_addFlashImage(420, 81, COLOR_BLACK, ROTATE_0, newton);
+#endif
       C_addQR(100, 160, 3, 7, "https://openepaperlink.eu/tag/0/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       break;
     case SOLUM_M3_BWR_97:
@@ -548,7 +559,9 @@ static void add_rendered_content_splash(void)
       C_epdSetFont(&FreeSans9pt7b);
       C_epdPrintf(xres - 37, 310, COLOR_BLACK, ROTATE_270, "FW: %04X-%s", fw, suffix);
       C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+#if !defined(OEPL_SMALL_FLASH)
       C_addFlashImage(220, 420, COLOR_BLACK, ROTATE_0, newton);
+#endif
       C_addQR(260, 160, 3, 7, "https://openepaperlink.eu/tag/0/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
       break;
     default:
@@ -707,8 +720,12 @@ static void add_rendered_content_ap_not_found(void)
     C_epdPrintf(10, 58, COLOR_BLACK, ROTATE_0, "I'll try again in a little while, but you");
     C_epdPrintf(10, 77, COLOR_BLACK, ROTATE_0, "can force a retry now by scanning");
     C_epdPrintf(10, 98, COLOR_BLACK, ROTATE_0, "the NFC-wake area with your phone");
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(200, 128, COLOR_BLACK, ROTATE_0, pandablack);
+#endif
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(312, 274, COLOR_RED, ROTATE_0, pandared);
+#endif
   } else if(xres >= 880 && yres >= 528) {
     // 7.5"
     C_epdSetFont(&FreeSansBold18pt7b);
@@ -718,8 +735,12 @@ static void add_rendered_content_ap_not_found(void)
     C_epdPrintf(10, 39, COLOR_BLACK, ROTATE_0, "Couldn't find an AP :(");
     C_epdPrintf(10, 58, COLOR_BLACK, ROTATE_0, "I'll try again in a little while, but you");
     C_epdPrintf(10, 77, COLOR_BLACK, ROTATE_0, "can force a retry now by pressing a button");
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(200, 128, COLOR_BLACK, ROTATE_0, pandablack);
+#endif
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(312, 274, COLOR_RED, ROTATE_0, pandared);
+#endif
   } else if(xres >= 600 && yres >= 480) {
     // 6"
     C_epdSetFont(&FreeSansBold18pt7b);
@@ -729,8 +750,12 @@ static void add_rendered_content_ap_not_found(void)
     C_epdPrintf(10, 39, COLOR_BLACK, ROTATE_0, "Couldn't find an AP :(");
     C_epdPrintf(10, 58, COLOR_BLACK, ROTATE_0, "I'll try again in a little while, but you");
     C_epdPrintf(10, 77, COLOR_BLACK, ROTATE_0, "can force a retry now by pressing a button");
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(0, 96, COLOR_BLACK, ROTATE_0, pandablack);
+#endif
+#if !defined(OEPL_SMALL_FLASH)
     C_addFlashImage(112, 242, COLOR_RED, ROTATE_0, pandared);
+#endif
   } else if(xres >= 792 && yres >= 272) {
     // 5.8" (weird aspect ratio)
     C_epdSetFont(&FreeSansBold18pt7b);

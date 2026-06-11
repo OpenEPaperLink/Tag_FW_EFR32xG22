@@ -73,6 +73,7 @@ static const sl_power_manager_em_transition_event_info_t event_info = {
 
 static uint8_t button1_hwval, button2_hwval, gpio_hwval, nfcfd_hwval, nfcpwr_hwval, nfcsda_hwval;
 static uint8_t white_hwval, red_hwval, blue_hwval, green_hwval;
+static bool led_active_high = false;
 static void* gpio_cb = NULL;
 
 static bool is_devkit = false;
@@ -162,9 +163,12 @@ void oepl_hw_init(void)
 
   // Setup debugprint infrastructure
   extern sl_iostream_instance_info_t sl_iostream_instance_euart_debug_info;
-  #if SL_CATALOG_IOSTREAM_RTT_PRESENT
+  // Note: the iostream_rtt component does not contribute a
+  // SL_CATALOG_IOSTREAM_RTT_PRESENT define to sl_component_catalog.h
+  // (unlike iostream_swo), so we can't gate on the catalog here. The
+  // component is unconditionally part of the project (.slcp), so
+  // reference it directly.
   extern sl_iostream_instance_info_t sl_iostream_instance_rtt_info;
-  #endif
   extern sl_iostream_instance_info_t sl_iostream_instance_swo_info;
 
   if(tagconfig->debug->type != DBG_SWO) {
@@ -185,11 +189,9 @@ void oepl_hw_init(void)
     case DBG_SWO:
       sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
       break;
-    #if SL_CATALOG_IOSTREAM_RTT_PRESENT
     case DBG_RTT:
       sl_iostream_set_system_default(sl_iostream_instance_rtt_info.handle);
       break;
-    #endif
     case DBG_EUART:
       // Adjust the pinout for the EUART
       GPIO_PinModeSet(tagconfig->debug->output.euart.tx.port, tagconfig->debug->output.euart.tx.pin, gpioModePushPull, 1);
@@ -283,26 +285,29 @@ void oepl_hw_init(void)
     if(tagconfig->led->gate.port != gpioPortInvalid) {
       GPIO_PinModeSet(tagconfig->led->gate.port, tagconfig->led->gate.pin, gpioModePushPull, 1);
     }
+    led_active_high = tagconfig->led->active_high;
+    // Idle (off) level depends on channel polarity
+    unsigned int led_idle = led_active_high ? 0 : 1;
     if(tagconfig->led->white.port != gpioPortInvalid) {
-      GPIO_PinModeSet(tagconfig->led->white.port, tagconfig->led->white.pin, gpioModePushPull, 1);
+      GPIO_PinModeSet(tagconfig->led->white.port, tagconfig->led->white.pin, gpioModePushPull, led_idle);
       white_hwval =  0x80 | tagconfig->led->white.port << 4| tagconfig->led->white.pin;
     } else {
       white_hwval = 0;
     }
     if(tagconfig->led->red.port != gpioPortInvalid) {
-      GPIO_PinModeSet(tagconfig->led->red.port, tagconfig->led->red.pin, gpioModePushPull, 1);
+      GPIO_PinModeSet(tagconfig->led->red.port, tagconfig->led->red.pin, gpioModePushPull, led_idle);
       red_hwval =  0x80 | tagconfig->led->red.port << 4| tagconfig->led->red.pin;
     } else {
       red_hwval = 0;
     }
     if(tagconfig->led->green.port != gpioPortInvalid) {
-      GPIO_PinModeSet(tagconfig->led->green.port, tagconfig->led->green.pin, gpioModePushPull, 1);
+      GPIO_PinModeSet(tagconfig->led->green.port, tagconfig->led->green.pin, gpioModePushPull, led_idle);
       green_hwval =  0x80 | tagconfig->led->green.port << 4| tagconfig->led->green.pin;
     } else {
       green_hwval = 0;
     }
     if(tagconfig->led->blue.port != gpioPortInvalid) {
-      GPIO_PinModeSet(tagconfig->led->blue.port, tagconfig->led->blue.pin, gpioModePushPull, 1);
+      GPIO_PinModeSet(tagconfig->led->blue.port, tagconfig->led->blue.pin, gpioModePushPull, led_idle);
       blue_hwval =  0x80 | tagconfig->led->blue.port << 4| tagconfig->led->blue.pin;
     } else {
       blue_hwval = 0;
@@ -534,6 +539,18 @@ void oepl_hw_init(void)
 
   // Cache our HWID
   oepl_nvm_setting_get(OEPL_HWID, &hwid, sizeof(hwid));
+
+  // Refresh NVM if our current config reports a different (and non-zero) hwid.
+  // Without this, an older firmware boot that happened to return 0 (because
+  // hwtype lookup failed before being fixed) leaves NVM stuck at 0, and the
+  // AP keeps mis-identifying us. Re-syncing on every boot keeps NVM aligned
+  // with the build's actual config.
+  uint8_t current_hwid = oepl_efr32xg22_get_oepl_hwid();
+  if(current_hwid != 0 && current_hwid != hwid) {
+    DPRINTF("HWID drift: NVM=0x%02x, config=0x%02x — updating NVM\n", hwid, current_hwid);
+    oepl_nvm_setting_set(OEPL_HWID, &current_hwid, sizeof(current_hwid));
+    hwid = current_hwid;
+  }
   DPRINTF("Hello OEPL tag type 0x%02x\n", hwid);
 
   size_t slots, slot_size;
@@ -553,32 +570,32 @@ void oepl_hw_init(void)
   oepl_display_init(&displayconfig);
 }
 
+static void led_drive(uint8_t hwval, bool on)
+{
+  // The default LED wiring is active-low (pin sinks the LED current);
+  // boards with low-side MOSFET switches are active-high.
+  if(on != led_active_high) {
+    GPIO_PinOutClear((GPIO_Port_TypeDef)((hwval & 0x70) >> 4), hwval & 0x0F);
+  } else {
+    GPIO_PinOutSet((GPIO_Port_TypeDef)((hwval & 0x70) >> 4), hwval & 0x0F);
+  }
+}
+
 void oepl_hw_set_led(uint8_t color, bool on)
 {
   if(red_hwval || green_hwval || blue_hwval) {
     // todo: color support using PWM on a timer
-    (void) color;
-    if(on) {
-      if(color & 0b11100000)
-      GPIO_PinOutClear((red_hwval & 0x70) >> 4, red_hwval & 0x0F);
-      if(color & 0b00011100)
-      GPIO_PinOutClear((green_hwval & 0x70) >> 4, green_hwval & 0x0F);
-      if(color & 0b00000011)
-      GPIO_PinOutClear((blue_hwval & 0x70) >> 4, blue_hwval & 0x0F);
-    } else {
-      if(color & 0b11100000)
-      GPIO_PinOutSet((red_hwval & 0x70) >> 4, red_hwval & 0x0F);
-      if(color & 0b00011100)
-      GPIO_PinOutSet((green_hwval & 0x70) >> 4, green_hwval & 0x0F);
-      if(color & 0b00000011)
-      GPIO_PinOutSet((blue_hwval & 0x70) >> 4, blue_hwval & 0x0F);
+    if(color & 0b11100000) {
+      led_drive(red_hwval, on);
+    }
+    if(color & 0b00011100) {
+      led_drive(green_hwval, on);
+    }
+    if(color & 0b00000011) {
+      led_drive(blue_hwval, on);
     }
   } else if(white_hwval) {
-    if(on) {
-      GPIO_PinOutClear((white_hwval & 0x70) >> 4, white_hwval & 0x0F);
-    } else {
-      GPIO_PinOutSet((white_hwval & 0x70) >> 4, white_hwval & 0x0F);
-    }
+    led_drive(white_hwval, on);
   }
 }
 

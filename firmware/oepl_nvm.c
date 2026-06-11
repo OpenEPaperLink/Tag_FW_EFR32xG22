@@ -2,9 +2,12 @@
 //                                   Includes
 // -----------------------------------------------------------------------------
 #include "em_device.h"
+#include "em_msc.h"
+#include "em_system.h"
 #include "oepl_nvm.h"
 #include "oepl_hw_abstraction.h"
 #include "oepl_flash_driver.h"
+#include "oepl_efr32_hwtypes.h"
 
 #include "oepl-proto.h"
 #include "nvm3.h"
@@ -32,6 +35,15 @@
 #define NVM3_OBJECT_ID_IMAGE_METADATA_MAX   0x2010
 
 #define NVM3_MARKER_VALUE                   0xCAFEFACEUL
+
+// Tags without an external SPI flash keep bulk image storage in internal
+// flash, between the end of the app+NVM3 region (linker_nvm_end, the top
+// of the linker's FLASH region) and the end of the physical flash. The
+// physical size is taken from DEVINFO at runtime, because the part we
+// link against (F512) can have more flash than the part on the board
+// (the SES-imagotag EL042TS1 carries a 256 kB FG22).
+extern char linker_nvm_end;
+#define INTERNAL_BULK_STORAGE_BASE          ((uint32_t)&linker_nvm_end)
 
 // -----------------------------------------------------------------------------
 //                              Macros and Typedefs
@@ -64,6 +76,9 @@ typedef struct {
 //                          Static Function Declarations
 // -----------------------------------------------------------------------------
 static oepl_nvm_status_t check_fwu_md5(void);
+static bool bulk_storage_is_internal(void);
+static oepl_nvm_status_t internal_storage_erase(uint32_t address, size_t length);
+static oepl_nvm_status_t internal_storage_write(uint32_t address, const uint8_t* bytes, size_t length);
 
 // -----------------------------------------------------------------------------
 //                                Global Variables
@@ -100,6 +115,27 @@ oepl_nvm_status_t oepl_nvm_init_default(void)
   // Bugfix: deinit the bootloader explicitly since it might not have realized
   bootloader_deinit();
   Ecode_t nvm_status = nvm3_readData(nvm3_defaultHandle, NVM3_OBJECT_ID_CONFIG, &devconfig, sizeof(devconfig));
+  if(nvm_status == ECODE_NVM3_ERR_NOT_OPENED) {
+    // The nvm3_initDefault() call in sl_platform_init() failed and its return
+    // code was discarded. It runs right after bootloader_init(), which can
+    // interfere with flash access; now that the bootloader is deinited, retry
+    // the open and log the original failure reason if it persists.
+    nvm_status = nvm3_initDefault();
+    DPRINTF("NVM3 was not open at boot; reopen attempt returned %08lX\n", nvm_status);
+    if(nvm_status == ECODE_NVM3_ERR_NO_VALID_PAGES) {
+      // The NVM3 area contains non-NVM3 data, e.g. remnants of a previous
+      // firmware with a different flash layout. Erase the area and retry.
+      DPRINTF("Erasing NVM3 area at %p (%d bytes) and retrying\n",
+              nvm3_defaultInit->nvmAdr, nvm3_defaultInit->nvmSize);
+      if(internal_storage_erase((uint32_t)nvm3_defaultInit->nvmAdr, nvm3_defaultInit->nvmSize) == NVM_SUCCESS) {
+        nvm_status = nvm3_initDefault();
+        DPRINTF("NVM3 open after erase returned %08lX\n", nvm_status);
+      }
+    }
+    if(nvm_status == ECODE_OK) {
+      nvm_status = nvm3_readData(nvm3_defaultHandle, NVM3_OBJECT_ID_CONFIG, &devconfig, sizeof(devconfig));
+    }
+  }
   if(nvm_status != ECODE_OK) {
     DPRINTF("Unable to read/find device initial settings, %08lX\n", nvm_status);
     return NVM_ERROR;
@@ -117,18 +153,99 @@ oepl_nvm_status_t oepl_nvm_init_default(void)
   return NVM_SUCCESS;
 }
 
+static bool bulk_storage_is_internal(void)
+{
+  const oepl_efr32xg22_tagconfig_t* tagcfg = oepl_efr32xg22_get_config();
+  return tagcfg == NULL
+         || tagcfg->flash == NULL
+         || tagcfg->flash->nCS.port == gpioPortInvalid;
+}
+
+static oepl_nvm_status_t internal_storage_erase(uint32_t address, size_t length)
+{
+  MSC_Init();
+  for(uint32_t page = address; page < address + length; page += FLASH_PAGE_SIZE) {
+    if(MSC_ErasePage((uint32_t*)page) != mscReturnOk) {
+      MSC_Deinit();
+      DPRINTF("Internal flash erase failed at 0x%08lx\n", page);
+      return NVM_ERROR;
+    }
+  }
+  MSC_Deinit();
+  return NVM_SUCCESS;
+}
+
+static oepl_nvm_status_t internal_storage_write(uint32_t address, const uint8_t* bytes, size_t length)
+{
+  MSC_Status_TypeDef status;
+  // Image block offsets are 4k-aligned, so the address is always
+  // word-aligned. The length of the last block of an image may not be:
+  // pad the tail out to a full word with erased-state bytes.
+  size_t aligned_length = length & ~3UL;
+  MSC_Init();
+  status = MSC_WriteWord((uint32_t*)address, bytes, aligned_length);
+  if(status == mscReturnOk && aligned_length < length) {
+    uint8_t tail[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+    memcpy(tail, &bytes[aligned_length], length - aligned_length);
+    status = MSC_WriteWord((uint32_t*)(address + aligned_length), tail, sizeof(tail));
+  }
+  MSC_Deinit();
+  if(status != mscReturnOk) {
+    DPRINTF("Internal flash write failed at 0x%08lx (%d)\n", address, status);
+    return NVM_ERROR;
+  }
+  return NVM_SUCCESS;
+}
+
 oepl_nvm_status_t oepl_nvm_factory_reset(uint8_t hwid)
 {
   oepl_nvm_status_t function_status = NVM_ERROR;
   Ecode_t nvm_status = nvm3_eraseAll(nvm3_defaultHandle);
   if(nvm_status != ECODE_OK) {
-    DPRINTF("Failed resetting to factory\n");
+    DPRINTF("Failed resetting to factory, %08lX\n", nvm_status);
     return NVM_ERROR;
   }
 
   devconfig.marker = NVM3_MARKER_VALUE;
   devconfig.hwid = hwid;
-  
+
+  if(bulk_storage_is_internal()) {
+    // No external flash on this tag: bulk image storage lives in the top
+    // region of internal flash instead of a bootloader-managed SPI flash.
+    // There is no FWU staging slot in this mode (flash via SWD instead).
+    uint32_t flash_size = (uint32_t)SYSTEM_GetFlashSize() * 1024UL;
+    if(flash_size <= INTERNAL_BULK_STORAGE_BASE) {
+      DPRINTF("Internal flash (%ldB) too small for bulk storage\n", flash_size);
+      return NVM_ERROR;
+    }
+    devconfig.fwu_slot_size = 0;
+    devconfig.bulk_storage_base_address = INTERNAL_BULK_STORAGE_BASE;
+    devconfig.bulk_storage_size = flash_size - INTERNAL_BULK_STORAGE_BASE;
+    devconfig.bulk_storage_pagesize = FLASH_PAGE_SIZE;
+    DPRINTF("Using internal bulk storage at 0x%08lx, %ldB in pages of %ldB\n",
+            devconfig.bulk_storage_base_address,
+            devconfig.bulk_storage_size,
+            devconfig.bulk_storage_pagesize);
+
+    function_status = internal_storage_erase(devconfig.bulk_storage_base_address,
+                                             devconfig.bulk_storage_size);
+    if(function_status != NVM_SUCCESS) {
+      DPRINTF("Failed erasing internal bulk storage\n");
+      return function_status;
+    }
+
+    nvm3_writeData(nvm3_defaultHandle, NVM3_OBJECT_ID_CONFIG, &devconfig, sizeof(devconfig));
+    DPRINTF("Stored new devconfig\n");
+
+    function_status = oepl_nvm_setting_set_default(OEPL_RAW_TAGSETTINGS);
+    if(function_status == NVM_SUCCESS) {
+      DPRINTF("Stored default tagconfig\n");
+    } else {
+      DPRINTF("Didn't manage to set tagconfig?\n");
+    }
+    return function_status;
+  }
+
   // Autodetect FWU and storage size through the bootloader flash driver
   int32_t status;
   BootloaderStorageSlot_t slotInfo;
@@ -559,6 +676,12 @@ oepl_nvm_status_t oepl_fwu_get_highest_block_written(size_t* block_idx)
 
 oepl_nvm_status_t oepl_fwu_write(size_t block_idx, const uint8_t bytes[4096], size_t actual_length)
 {
+  if(devconfig.fwu_slot_size == 0) {
+    // Tags on internal bulk storage have no FWU staging slot
+    DPRINTF("FWU not supported without staging storage\n");
+    return NVM_NOT_SUPPORTED;
+  }
+
   size_t highest_written;
   if(oepl_fwu_get_highest_block_written(&highest_written) != NVM_SUCCESS) {
     return NVM_ERROR;
@@ -938,35 +1061,35 @@ oepl_nvm_status_t oepl_nvm_erase_image(size_t img_idx)
   }
 
   // Erase the slot in bulk storage first
-  int32_t btl_status;
-  oepl_hw_flash_wake();
-  if((btl_status = bootloader_init()) != BOOTLOADER_OK) {
-    DPRINTF("Failed BTL init with %08lx\n", btl_status);
-    goto exit;
-  }
+  if(bulk_storage_is_internal()) {
+    retval = internal_storage_erase(devconfig.bulk_storage_base_address + img_idx * slot_size, slot_size);
+    if(retval != NVM_SUCCESS) {
+      return retval;
+    }
+  } else {
+    int32_t btl_status;
+    oepl_hw_flash_wake();
+    if((btl_status = bootloader_init()) != BOOTLOADER_OK) {
+      DPRINTF("Failed BTL init with %08lx\n", btl_status);
+      oepl_hw_flash_deepsleep();
+      return NVM_ERROR;
+    }
 
-  btl_status = bootloader_eraseRawStorage(devconfig.bulk_storage_base_address + img_idx * slot_size, slot_size);
-  if(btl_status != BOOTLOADER_OK) {
-    goto done;
+    btl_status = bootloader_eraseRawStorage(devconfig.bulk_storage_base_address + img_idx * slot_size, slot_size);
+    bootloader_deinit();
+    oepl_hw_flash_deepsleep();
+    if(btl_status != BOOTLOADER_OK) {
+      return NVM_ERROR;
+    }
   }
 
   // Then erase the accompanying metadata
   Ecode_t nvm_status = nvm3_deleteObject(nvm3_defaultHandle, NVM3_OBJECT_ID_IMAGE_METADATA_BASE + img_idx);
   if(nvm_status == ECODE_NVM3_OK ||
      nvm_status == ECODE_NVM3_ERR_KEY_NOT_FOUND) {
-    retval = NVM_SUCCESS;
+    return NVM_SUCCESS;
   } else {
-    retval = NVM_ERROR;
-  }
-
-  done:
-  bootloader_deinit();
-  exit:
-  oepl_hw_flash_deepsleep();
-  if(btl_status != BOOTLOADER_OK) {
     return NVM_ERROR;
-  } else {
-    return retval;
   }
 }
 
@@ -1083,14 +1206,18 @@ oepl_nvm_status_t oepl_nvm_write_image_bytes(size_t img_idx, size_t offset, cons
     return NVM_NOT_SUPPORTED;
   }
 
+  DPRINTF("Write %d to addr 0x%08x\n", length, devconfig.bulk_storage_base_address + img_idx * slot_size + offset);
+
+  if(bulk_storage_is_internal()) {
+    return internal_storage_write(devconfig.bulk_storage_base_address + img_idx * slot_size + offset, bytes, length);
+  }
+
   int32_t btl_status;
   oepl_hw_flash_wake();
   if((btl_status = bootloader_init()) != BOOTLOADER_OK) {
     DPRINTF("Failed BTL init with %08lx\n", btl_status);
     goto exit;
   }
-
-  DPRINTF("Write %d to addr 0x%08x\n", length, devconfig.bulk_storage_base_address + img_idx * slot_size + offset);
 
   // Todo: does the bootloader really modify its input byte buffer?
   btl_status = bootloader_writeRawStorage(devconfig.bulk_storage_base_address + img_idx * slot_size + offset, (uint8_t*)bytes, length);

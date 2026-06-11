@@ -380,11 +380,15 @@ static const oepl_efr32xg22_ledconfig_t ledconfig_sesimagotag_el042ts1 = {
   .white  = {.port = gpioPortB, .pin = 4},
   // PC07 is the common gate for the RGB+W MOSFETs on this tag.
   // Must be driven HIGH for the PB01..PB04 channels to actually emit.
-  .gate   = {.port = gpioPortC, .pin = 7}
+  .gate   = {.port = gpioPortC, .pin = 7},
+  // Channels switch low-side MOSFETs: pin HIGH = LED on.
+  .active_high = true
 };
 
 static const oepl_efr32xg22_debugconfig_t debugconfig_sesimagotag_el042ts1 = {
-  .type = DBG_SWO,
+  // SWO is unusable on this tag (PA03 is tied to ground), so debug
+  // output goes over RTT through the SWD connection instead.
+  .type = DBG_RTT,
   .output = {
     .euart = {
       .tx = GPIO_UNUSED,

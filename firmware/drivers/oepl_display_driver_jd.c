@@ -277,8 +277,14 @@ static void display_reinit(void)
        tagcfg->display->type == EPD_SESIMAGOTAG_EL042TS1);
 
     if (is_sesimagotag_el042ts1) {
-      // SES-imagotag EL042TS1 (4.2" BWRY, JD79653-family). Reverse-
-      // engineered on-bench; values from EL042TS1_DRIVER.md.
+      // SES-imagotag EL042TS1 (4.2" BWRY, JD79653-family).
+      //
+      // Register values are the M3 BWRY 4.2" capture (PR#16 set, below in
+      // the else-branch): with these the panel develops red and yellow as
+      // distinct colours. The earlier bench-derived set (PWR {0x03, 0x00,
+      // 0x2B, 0x2B, 0x03}, BTST {0x17 x3}, PSR {0x3F, 0x09}, CDI 0x97)
+      // drove a mode where pixel codes 0b10 and 0b11 both rendered
+      // yellow — see EL042TS1_DRIVER.md.
       //
       // CRITICAL SEQUENCING: this panel requires PON BEFORE DTM1. The
       // standard OEPL flow (DTM1 in display_draw, PON in
@@ -287,11 +293,29 @@ static void display_reinit(void)
       // until PON has turned on the booster rails. We therefore issue
       // PON at the end of display_reinit here, and display_refresh_and_wait
       // skips its own PON for this displaytype.
-      EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x03, 0x00, 0x2B, 0x2B, 0x03});   // PWR
-      EMIT_INSTRUCTION_STATIC_DATA(0x06, {0x17, 0x17, 0x17});                 // BTST
-      EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x3F, 0x09});                       // PSR (2 bytes)
+      EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});                       // PSR
+      EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x26, 0x78, 0x24, 0x26}); // PWR
+      EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});                 // PFS
+      EMIT_INSTRUCTION_STATIC_DATA(0x06, {0xC0, 0xC0, 0xC0});                 // BTST
       EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
-      EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x97});                             // CDI
+      EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x02});                             // PLL
+      // CDI[7:6] select the border colour using pixel codes (00=black,
+      // 01=white, 10=yellow, 11=red). The Solum capture uses 0x17 (black
+      // border); we prefer white.
+      EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x57});                             // CDI
+      EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xA5});                             // vendor unlock
+      EMIT_INSTRUCTION_STATIC_DATA(0xEF, {0x01, 0x32, 0x08, 0x32, 0x0E, 0x4B, 0x19, 0x4B});
+      EMIT_INSTRUCTION_STATIC_DATA(0xDB, {0x00});
+      EMIT_INSTRUCTION_STATIC_DATA(0xF9, {0x01});
+      EMIT_INSTRUCTION_STATIC_DATA(0xCF, {0x00});
+      EMIT_INSTRUCTION_STATIC_DATA(0xDF, {0x3C});
+      EMIT_INSTRUCTION_STATIC_DATA(0xFD, {0x01});
+      EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
+      EMIT_INSTRUCTION_STATIC_DATA(0xDC, {0x00});
+      EMIT_INSTRUCTION_STATIC_DATA(0xDD, {0x01});
+      EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x01});
+      EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});                             // vendor lock
+      EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
       EMIT_INSTRUCTION_NO_DATA(0x04);                                          // PON (before DTM1)
       sl_udelay_wait(500);
       oepl_display_driver_wait_busy(4000, true);
