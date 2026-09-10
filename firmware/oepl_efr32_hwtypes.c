@@ -517,6 +517,8 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
       // Maybe these are the same?
       case 0x1C:
         // 1.6" BWRY
+      case 0x37:
+        // 1.6" 200px BWRY, EL016F5C4C MFD 2025-06, neuere ctrltype-Revision
       case 0x1E:
         // 2.2" BWRY WT
       case 0x20:
