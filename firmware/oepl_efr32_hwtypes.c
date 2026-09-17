@@ -525,6 +525,8 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
         // 2.9" BWRY
       case 0x2B:
         // 4.2" BWRY
+      case 0x23:
+        // 4.2" BWRY, EL042F5C4C, newer ctrltype revision
       case 0x2C:
         // 7.5" BWRY
       case 0x25:
