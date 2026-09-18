@@ -48,12 +48,23 @@
 #define DPRINTF(...)
 #endif
 
+/* NFC record types (rec_type field). Wire bytes an agent must ground on --
+ * kept here (not in per-repo constants) for that reason. */
+#define OD_NFC_REC_TEXT                0u
+#define OD_NFC_REC_URI                 1u
+#define OD_NFC_REC_WELL_KNOWN_RAW      2u
+#define OD_NFC_REC_MIME                3u
+#define OD_NFC_REC_RAW_NDEF            4u
+
 // -----------------------------------------------------------------------------
 //                          Static Function Declarations
 // -----------------------------------------------------------------------------
 static void em_cb(sl_power_manager_em_t from, sl_power_manager_em_t to);
 static void gpioint_cb(uint8_t pin, void* ctx);
 static void hardware_error_handler(void);
+static void tnb132m_probe(const oepl_efr32xg22_tagconfig_t* tagconfig);
+static void tnb132m_write_ndef_text(const oepl_efr32xg22_tagconfig_t* tagconfig, const char* text);
+static bool od_nfc_write_record_raw(const oepl_efr32xg22_tagconfig_t* tagconfig, uint8_t rec_type, const uint8_t *data, uint16_t data_len);
 
 // -----------------------------------------------------------------------------
 //                                Global Variables
@@ -386,11 +397,11 @@ void oepl_hw_init(void)
         i2cTransfer.buf[1].data   = NULL;
         i2cTransfer.buf[1].len    = 0;
 
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
+        result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
 
         // Send data
         while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
+          result = I2C_Transfer(tagconfig->nfc->i2c);
         }
 
         if (result != i2cTransferDone) {
@@ -415,11 +426,11 @@ void oepl_hw_init(void)
         i2cTransfer.buf[1].data   = &txBuffer[1];
         i2cTransfer.buf[1].len    = 1;
 
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
+        result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
 
         // Send data
         while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
+          result = I2C_Transfer(tagconfig->nfc->i2c);
         }
 
         if (result != i2cTransferDone) {
@@ -447,11 +458,11 @@ void oepl_hw_init(void)
         i2cTransfer.buf[1].data   = txBuffer;
         i2cTransfer.buf[1].len    = 16;
 
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
+        result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
 
         // Send data
         while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
+          result = I2C_Transfer(tagconfig->nfc->i2c);
         }
 
         if (result != i2cTransferDone) {
@@ -461,8 +472,15 @@ void oepl_hw_init(void)
           for(size_t i = 0; i < sizeof(txBuffer) - 1; i++) {
             DPRINTF("%02x ", txBuffer[1+i]);
           }
+          DPRINTF("\n");
         }
       }
+
+      DPRINTF("NFC Orig content\n");
+      tnb132m_probe(tagconfig);
+      tnb132m_write_ndef_text(tagconfig, "HelloOEPL");
+      DPRINTF("NFC rewritten content\n");
+      tnb132m_probe(tagconfig);
 
       sl_udelay_wait(20000);
 
@@ -483,11 +501,11 @@ void oepl_hw_init(void)
         i2cTransfer.buf[1].data   = NULL;
         i2cTransfer.buf[1].len    = 0;
 
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
+        result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
 
         // Send data
         while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
+          result = I2C_Transfer(tagconfig->nfc->i2c);
         }
 
         if (result != i2cTransferDone) {
@@ -790,18 +808,56 @@ const char* oepl_hw_get_swsuffix(void)
 
 bool oepl_hw_nfc_write_url(const uint8_t* url_buffer, size_t length)
 {
-  // Todo: implement nonblocking I2C driver for NFC
-  (void) url_buffer;
-  (void) length;
-  return false;
+  const oepl_efr32xg22_tagconfig_t* tagconfig = oepl_efr32xg22_get_config();
+
+  if (tagconfig->nfc == NULL || tagconfig->hwtype != SOLUM_AUTODETECT) {
+    return false;
+  }
+
+  GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeWiredAndFilter, 0);
+  GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeWiredAndFilter, 0);
+  if (tagconfig->nfc->power.port != gpioPortInvalid) {
+    GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModePushPull, 1);
+    sl_udelay_wait(40000);
+  } else {
+    sl_udelay_wait(10000);
+  }
+
+  bool res = od_nfc_write_record_raw(tagconfig, OD_NFC_REC_URI, url_buffer, length);
+  
+  if (tagconfig->nfc->power.port != gpioPortInvalid) {
+    GPIO_PinOutClear(tagconfig->nfc->power.port, tagconfig->nfc->power.pin);
+    GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModeInput, 1);
+  }
+  GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeInput, 1);
+  GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeInput, 1);
 }
 
 bool oepl_hw_nfc_write_raw(const uint8_t* raw_buffer, size_t length)
 {
-  // Todo: implement nonblocking I2C driver for NFC
-  (void) raw_buffer;
-  (void) length;
-  return false;
+  const oepl_efr32xg22_tagconfig_t* tagconfig = oepl_efr32xg22_get_config();
+
+  if (tagconfig->nfc == NULL || tagconfig->hwtype != SOLUM_AUTODETECT) {
+    return false;
+  }
+
+  GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeWiredAndFilter, 0);
+  GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeWiredAndFilter, 0);
+  if (tagconfig->nfc->power.port != gpioPortInvalid) {
+    GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModePushPull, 1);
+    sl_udelay_wait(40000);
+  } else {
+    sl_udelay_wait(10000);
+  }
+
+  bool res = od_nfc_write_record_raw(tagconfig, OD_NFC_REC_RAW_NDEF, &raw_buffer[2], length - 2);
+
+  if (tagconfig->nfc->power.port != gpioPortInvalid) {
+    GPIO_PinOutClear(tagconfig->nfc->power.port, tagconfig->nfc->power.pin);
+    GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModeInput, 1);
+  }
+  GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeInput, 1);
+  GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeInput, 1);
 }
 
 static void deepsleep_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
@@ -1068,7 +1124,7 @@ static void em_cb(sl_power_manager_em_t from,
       case SL_POWER_MANAGER_EM3:
         sl_sleeptimer_start_periodic_timer_ms(
           &nfc_poll_timer_handle,
-          100,
+          500,
           nfc_poll_timer_cb, NULL, 0xFF, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG 
         );
         break;
@@ -1100,4 +1156,527 @@ static void hardware_error_handler(void)
 
   // Wait for watchdog
   while(1);
+}
+
+// Probe TNB132M (distilled from https://github.com/OpenDisplay/Firmware_Silabs)
+static bool od_nfc_type3_paged_block_read16(const oepl_efr32xg22_tagconfig_t* tagconfig,
+                                            uint8_t dev7, uint8_t sub, uint8_t *out16)
+{
+  // Transfer structure
+  I2C_TransferSeq_TypeDef i2cTransfer;
+  I2C_TransferReturn_TypeDef result;
+
+  // Initialize I2C transfer
+  i2cTransfer.addr          = dev7 << 1;
+  i2cTransfer.flags         = I2C_FLAG_WRITE_READ;
+  i2cTransfer.buf[0].data   = &sub;
+  i2cTransfer.buf[0].len    = 1;
+  i2cTransfer.buf[1].data   = out16;
+  i2cTransfer.buf[1].len    = 16;
+
+  result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
+
+  // Send data
+  while (result == i2cTransferInProgress) {
+    result = I2C_Transfer(tagconfig->nfc->i2c);
+  }
+
+  if (result != i2cTransferDone) {
+      DPRINTF("I2C fail %08x\n", result);
+      return false;
+  } else {
+    DPRINTF("I2C Response: ");
+    for(size_t i = 0; i < 16; i++) {
+      DPRINTF("%02x ", out16[i]);
+    }
+    DPRINTF("\n");
+    return true;
+  }
+}
+
+/* Type-3 16-byte block write: START, dev+W, sub, 16 data bytes, STOP. Mirrors the
+ * paged read on the write side — AI goes to dev=0x48 sub=0, NDEF data blocks go to
+ * dev=0x40 sub=0x10/0x20/... (same byte-offset mapping as the read path). */
+static bool od_nfc_type3_paged_block_write16(const oepl_efr32xg22_tagconfig_t* tagconfig,
+                                             uint8_t dev7, uint8_t sub, const uint8_t *in16)
+{
+  bool a;
+  if (in16 == NULL) {
+    return false;
+  }
+
+  // Transfer structure
+  I2C_TransferSeq_TypeDef i2cTransfer;
+  I2C_TransferReturn_TypeDef result;
+
+  // Initialize I2C transfer
+  i2cTransfer.addr          = dev7 << 1;
+  i2cTransfer.flags         = I2C_FLAG_WRITE_WRITE;
+  i2cTransfer.buf[0].data   = &sub;
+  i2cTransfer.buf[0].len    = 1;
+  i2cTransfer.buf[1].data   = in16;
+  i2cTransfer.buf[1].len    = 16;
+
+  result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
+
+  // Send data
+  while (result == i2cTransferInProgress) {
+    result = I2C_Transfer(tagconfig->nfc->i2c);
+  }
+
+  if (result != i2cTransferDone) {
+      return false;
+  } else {
+    return true;
+  }
+}
+
+/* Wake TNB132M host I2C + open the byte-offset Type-3 data window at 0x40.
+ * After EEPROM/block writes via 0x48/0x40, callers must run this again or
+ * 0x48 sub=0 still returns updated AI while 0x40 sub=0x10 reads all 0xFF (RF /
+ * tag RAM cache repopulates; MCU window must be re-opened). */
+static void od_nfc_tnb132m_prime_type3(const oepl_efr32xg22_tagconfig_t* tagconfig)
+{
+  {
+    // Transfer structure
+    I2C_TransferSeq_TypeDef i2cTransfer;
+    I2C_TransferReturn_TypeDef result;
+    uint8_t txBuffer[2];
+
+    txBuffer[0] = 0x21;
+    txBuffer[1] = 0x04;
+
+    // Initialize I2C transfer
+    i2cTransfer.addr          = 0x30 << 1;
+    i2cTransfer.flags         = I2C_FLAG_WRITE;
+    i2cTransfer.buf[0].data   = txBuffer;
+    i2cTransfer.buf[0].len    = 2;
+    i2cTransfer.buf[1].data   = NULL;
+    i2cTransfer.buf[1].len    = 0;
+
+    result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
+
+    // Send data
+    while (result == i2cTransferInProgress) {
+      result = I2C_Transfer(tagconfig->nfc->i2c);
+    }
+
+    if (result != i2cTransferDone) {
+      DPRINTF("I2C fail %08x\n", result);
+    }
+  }
+
+  {
+    // Transfer structure
+    I2C_TransferSeq_TypeDef i2cTransfer;
+    I2C_TransferReturn_TypeDef result;
+    uint8_t txBuffer[1 + 1];
+
+    txBuffer[0] = 0x25;
+    txBuffer[1] = 0x00;
+
+    // Initialize I2C transfer
+    i2cTransfer.addr          = 0x30 << 1;
+    i2cTransfer.flags         = I2C_FLAG_WRITE_READ;
+    i2cTransfer.buf[0].data   = txBuffer;
+    i2cTransfer.buf[0].len    = 1;
+    i2cTransfer.buf[1].data   = &txBuffer[1];
+    i2cTransfer.buf[1].len    = 1;
+
+    result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
+
+    // Send data
+    while (result == i2cTransferInProgress) {
+      result = I2C_Transfer(tagconfig->nfc->i2c);
+    }
+
+    if (result != i2cTransferDone) {
+        DPRINTF("I2C fail %08x\n", result);
+    } else {
+      DPRINTF("I2C Response %02x\n", txBuffer[1]);
+    }
+  }
+
+  sl_udelay_wait(20000);
+
+  {
+    // Transfer structure
+    I2C_TransferSeq_TypeDef i2cTransfer;
+    I2C_TransferReturn_TypeDef result;
+    uint8_t txBuffer[1 + 16];
+
+    txBuffer[0] = 0x30;
+
+    // Initialize I2C transfer
+    i2cTransfer.addr          = 0x43 << 1;
+    i2cTransfer.flags         = I2C_FLAG_WRITE_READ;
+    i2cTransfer.buf[0].data   = txBuffer;
+    i2cTransfer.buf[0].len    = 1;
+    i2cTransfer.buf[1].data   = txBuffer;
+    i2cTransfer.buf[1].len    = 16;
+
+    result = I2C_TransferInit(tagconfig->nfc->i2c, &i2cTransfer);
+
+    // Send data
+    while (result == i2cTransferInProgress) {
+      result = I2C_Transfer(tagconfig->nfc->i2c);
+    }
+
+    if (result != i2cTransferDone) {
+        DPRINTF("I2C fail %08x\n", result);
+    } else {
+      DPRINTF("I2C Response: ");
+      for(size_t i = 0; i < sizeof(txBuffer) - 1; i++) {
+        DPRINTF("%02x ", txBuffer[1+i]);
+      }
+      DPRINTF("\n");
+    }
+  }
+}
+
+
+static void tnb132m_probe(const oepl_efr32xg22_tagconfig_t* tagconfig)
+{
+  uint8_t ai[16];
+  uint8_t data[64];
+  uint32_t ln;
+  uint16_t sum_calc, sum_read;
+  unsigned need_blocks;
+
+  od_nfc_tnb132m_prime_type3(tagconfig);
+  sl_udelay_wait(2000);
+
+  if (!od_nfc_type3_paged_block_read16(tagconfig, 0x48u, 0x00u, ai)) {
+    printf("[OD] NFC ndef AI @0x48 sub=0: NACK\r\n");
+    return;
+  }
+
+  if (ai[0] != 0x10u) {
+    DPRINTF("NFC ndef AI ver=%02x (not 1.x) — skip decode\r\n", ai[0]);
+    return;
+  }
+  ln = ((uint32_t)ai[11] << 16) | ((uint32_t)ai[12] << 8) | (uint32_t)ai[13];
+  sum_read = (uint16_t)(((uint16_t)ai[14] << 8) | (uint16_t)ai[15]);
+  sum_calc = 0;
+  for (unsigned i = 0; i < 14u; i++) {
+    sum_calc = (uint16_t)(sum_calc + ai[i]);
+  }
+  DPRINTF("NFC ndef AI Ver=%u.%u Nbr=%u Nbw=%u Nmaxb=%u RWFlag=%02x Ln=%lu Sum=%04x (calc %04x %s)\r\n",
+        (unsigned)(ai[0] >> 4), (unsigned)(ai[0] & 0x0Fu), (unsigned)ai[1], (unsigned)ai[2],
+        (unsigned)(((uint16_t)ai[3] << 8) | ai[4]), ai[10], (unsigned long)ln, (unsigned)sum_read,
+        (unsigned)sum_calc, sum_calc == sum_read ? "OK" : "BAD");
+  if (ln == 0u || ln > sizeof(data)) {
+    DPRINTF("NFC ndef Ln=%lu out of range (max %u)\r\n",
+          (unsigned long)ln, (unsigned)sizeof(data));
+    return;
+  }
+  need_blocks = (unsigned)((ln + 15u) / 16u);
+  for (unsigned b = 0; b < need_blocks; b++) {
+    uint8_t byte_off = (uint8_t)(0x10u + b * 0x10u);
+    uint8_t throwaway[16];
+    (void)od_nfc_type3_paged_block_read16(tagconfig, 0x48u, 0x00u,
+                                          throwaway);
+    sl_udelay_wait(500);
+    if (!od_nfc_type3_paged_block_read16(tagconfig, 0x40u,
+                                        byte_off, &data[b * 16u])) {
+      DPRINTF("NFC ndef blk%u @0x40 sub=%02x: NACK\r\n", b + 1u, (unsigned)byte_off);
+      return;
+    }
+    DPRINTF("NFC ndef blk%u %04x:", b + 1u, b * 16u);
+    for (unsigned j = 0; j < 16u; j++) {
+      DPRINTF(" %02x", data[b * 16u + j]);
+    }
+    DPRINTF("\r\n");
+    sl_udelay_wait(200);
+  }
+  {
+    uint8_t tnf0 = data[0] & 0x07u;
+    if (ln < 4u || tnf0 == 0u || tnf0 >= 6u) {
+      DPRINTF("NFC ndef record too short or bad TNF (ln=%lu hdr=%02x tnf=%u)\r\n",
+            (unsigned long)ln, data[0], tnf0);
+      return;
+    }
+  }
+  {
+    uint8_t hdr = data[0];
+    uint8_t tnf = hdr & 0x07u;
+    bool sr = (hdr & 0x10u) != 0;
+    bool il = (hdr & 0x08u) != 0;
+    unsigned tlen = data[1];
+    unsigned plen;
+    unsigned off;
+    unsigned ilen = 0;
+    if (sr) {
+      plen = data[2];
+      off = 3u;
+    } else {
+      if (ln < 6u) {
+        DPRINTF("NFC ndef long-format truncated\r\n");
+        return;
+      }
+      plen = ((unsigned)data[2] << 24) | ((unsigned)data[3] << 16) | ((unsigned)data[4] << 8) | data[5];
+      off = 6u;
+    }
+    if (il) {
+      if (ln < off + 1u) {
+        DPRINTF("NFC ndef IL truncated\r\n");
+        return;
+      }
+      ilen = data[off];
+      off += 1u;
+    }
+    if (off + tlen + ilen + plen > ln) {
+      DPRINTF("NFC ndef fields exceed Ln (off=%u tlen=%u il=%u plen=%u ln=%lu)\r\n",
+            off, tlen, ilen, plen, (unsigned long)ln);
+      return;
+    }
+    DPRINTF("NFC ndef rec TNF=%u SR=%u IL=%u tlen=%u plen=%u type=\"%.*s\"\r\n",
+          tnf, (unsigned)sr, (unsigned)il, tlen, plen, tlen, (const char *)&data[off]);
+    off += tlen + ilen;
+    if (tnf == 0x01u && tlen == 1u && data[off - tlen - ilen] == 'T' && plen >= 1u) {
+      unsigned stat = data[off];
+      unsigned lang_len = stat & 0x3Fu;
+      if (1u + lang_len <= plen) {
+        DPRINTF("NFC ndef Text lang=\"%.*s\" utf%u text=\"%.*s\"\r\n",
+              lang_len, (const char *)&data[off + 1u], (stat & 0x80u) ? 16u : 8u,
+              (unsigned)(plen - 1u - lang_len), (const char *)&data[off + 1u + lang_len]);
+      }
+    }
+  }
+}
+
+static void tnb132m_write_ndef_text(const oepl_efr32xg22_tagconfig_t* tagconfig, const char* text)
+{
+  uint8_t ai[16] = { 0 };
+  uint8_t blocks[32] = { 0 };
+  uint8_t cur_ai[16];
+  size_t tlen = (text != NULL) ? strlen(text) : 0u;
+  unsigned plen;
+  unsigned recln;
+  uint16_t sum;
+  unsigned i;
+  unsigned need_blocks;
+
+  od_nfc_tnb132m_prime_type3(tagconfig);
+  sl_udelay_wait(2000);
+
+  if (tlen == 0u || tlen > 25u) {
+    DPRINTF("NFC write: text len %u out of range (1..25)\r\n", (unsigned)tlen);
+    return false;
+  }
+  plen = 1u + 2u + (unsigned)tlen;
+  recln = 4u + plen;
+
+  blocks[0] = 0xD1u;
+  blocks[1] = 0x01u;
+  blocks[2] = (uint8_t)plen;
+  blocks[3] = 0x54u;
+  blocks[4] = 0x02u;
+  blocks[5] = (uint8_t)'e';
+  blocks[6] = (uint8_t)'n';
+  for (i = 0; i < tlen; i++) {
+    blocks[7u + i] = (uint8_t)text[i];
+  }
+
+  ai[0] = 0x10u;
+  ai[1] = 0x02u;
+  ai[2] = 0x01u;
+  ai[3] = 0x00u;
+  ai[4] = 0x3Cu;
+  ai[11] = (uint8_t)((recln >> 16) & 0xFFu);
+  ai[12] = (uint8_t)((recln >> 8) & 0xFFu);
+  ai[13] = (uint8_t)(recln & 0xFFu);
+  if (od_nfc_type3_paged_block_read16(tagconfig, 0x48u, 0x00u, cur_ai)
+      && cur_ai[0] == 0x10u) {
+    ai[10] = cur_ai[10];
+  }
+  sum = 0;
+  for (i = 0; i < 14u; i++) {
+    sum = (uint16_t)(sum + ai[i]);
+  }
+  ai[14] = (uint8_t)(sum >> 8);
+  ai[15] = (uint8_t)(sum & 0xFFu);
+
+  need_blocks = (recln + 15u) / 16u;
+  DPRINTF("NFC write: Ln=%u RWFlag=%02x text=\"%s\" (%u blk)\r\n",
+         recln, ai[10], text, need_blocks);
+  if (!od_nfc_type3_paged_block_write16(tagconfig, 0x48u, 0x00u, ai)) {
+    DPRINTF("NFC write: AI @0x48 sub=0 NACK\r\n");
+    return false;
+  }
+  sl_udelay_wait(10000);
+  for (i = 0; i < need_blocks; i++) {
+    uint8_t byte_off = (uint8_t)(0x10u + i * 0x10u);
+    if (!od_nfc_type3_paged_block_write16(tagconfig, 0x40u, byte_off,
+                                          &blocks[i * 16u])) {
+      DPRINTF("NFC write: blk%u @0x40 sub=%02x NACK\r\n", i + 1u, (unsigned)byte_off);
+      return false;
+    }
+    sl_udelay_wait(10000);
+  }
+  DPRINTF("NFC write: OK\r\n");
+  sl_udelay_wait(50000);
+  return true;
+}
+
+static bool od_nfc_write_record_raw(const oepl_efr32xg22_tagconfig_t* tagconfig, uint8_t rec_type, const uint8_t *data, uint16_t data_len)
+{
+  uint8_t ai[16] = { 0 };
+  uint8_t cur_ai[16];
+  static uint8_t s_od_nfc_write_blocks[512];
+  uint8_t *blocks = s_od_nfc_write_blocks;
+  uint16_t sum;
+  uint16_t record_len;
+  uint16_t payload_len;
+  uint8_t need_blocks;
+  uint8_t i;
+  CORE_DECLARE_IRQ_STATE;
+
+  if (data == NULL || data_len == 0u) {
+    return false;
+  }
+
+  DPRINTF("NFC write type %d, content:\n", rec_type);
+  for(size_t i = 0; i < data_len; i++) {
+    DPRINTF("%02x", data[i]);
+  }
+  DPRINTF("\n");
+
+  /* Defense-in-depth: bound data_len so the uint16_t payload_len math below
+   * (1 + hdr + data_len) cannot wrap and overrun s_od_nfc_write_blocks. Callers
+   * validate too, but this keeps the record builder memory-safe on its own. */
+  if (data_len > sizeof(s_od_nfc_write_blocks)) {
+    return false;
+  }
+  memset(blocks, 0, sizeof(s_od_nfc_write_blocks));
+
+  if (rec_type == OD_NFC_REC_TEXT) {
+    payload_len = (uint16_t)(1u + 2u + data_len);
+    if (payload_len > 255u || payload_len > (uint16_t)(sizeof(s_od_nfc_write_blocks) - 4u)) {
+      return false;
+    }
+    record_len = (uint16_t)(4u + payload_len);
+    blocks[0] = 0xD1u;
+    blocks[1] = 0x01u;
+    blocks[2] = (uint8_t)payload_len;
+    blocks[3] = 0x54u;
+    blocks[4] = 0x02u;
+    blocks[5] = (uint8_t)'e';
+    blocks[6] = (uint8_t)'n';
+    memcpy(&blocks[7], data, data_len);
+  } else if (rec_type == OD_NFC_REC_URI) {
+    payload_len = (uint16_t)(1u + data_len);
+    if (payload_len > 255u || payload_len > (uint16_t)(sizeof(s_od_nfc_write_blocks) - 4u)) {
+      return false;
+    }
+    record_len = (uint16_t)(4u + payload_len);
+    blocks[0] = 0xD1u;
+    blocks[1] = 0x01u;
+    blocks[2] = (uint8_t)payload_len;
+    blocks[3] = 0x55u;
+    blocks[4] = 0x00u;
+    memcpy(&blocks[5], data, data_len);
+  } else if (rec_type == OD_NFC_REC_WELL_KNOWN_RAW) {
+    uint8_t type_len;
+    uint16_t raw_payload_len;
+    if (data_len < 2u) {
+      return false;
+    }
+    type_len = data[0];
+    if (type_len == 0u || (uint16_t)(1u + type_len) > data_len) {
+      return false;
+    }
+    raw_payload_len = (uint16_t)(data_len - 1u - type_len);
+    if (raw_payload_len > 255u) {
+      return false;
+    }
+    record_len = (uint16_t)(3u + type_len + raw_payload_len);
+    if (record_len > sizeof(s_od_nfc_write_blocks)) {
+      return false;
+    }
+    blocks[0] = 0xD1u;
+    blocks[1] = type_len;
+    blocks[2] = (uint8_t)raw_payload_len;
+    memcpy(&blocks[3], &data[1], type_len);
+    if (raw_payload_len > 0u) {
+      memcpy(&blocks[3u + type_len], &data[1u + type_len], raw_payload_len);
+    }
+  } else if (rec_type == OD_NFC_REC_MIME) {
+    uint8_t mime_tl;
+    uint16_t body_len;
+
+    if (data_len < 3u) {
+      return false;
+    }
+    mime_tl = data[0];
+    if (mime_tl == 0u || (uint16_t)(1u + mime_tl) > data_len) {
+      return false;
+    }
+    body_len = (uint16_t)(data_len - 1u - mime_tl);
+    if (body_len > 255u) {
+      return false;
+    }
+    record_len = (uint16_t)(3u + mime_tl + body_len);
+    if (record_len > sizeof(s_od_nfc_write_blocks)) {
+      return false;
+    }
+    blocks[0] = 0xD2u; /* MB | ME | SR ; TNF = MIME */
+    blocks[1] = mime_tl;
+    blocks[2] = (uint8_t)body_len;
+    memcpy(&blocks[3], &data[1], mime_tl);
+    if (body_len > 0u) {
+      memcpy(&blocks[3u + mime_tl], &data[1u + mime_tl], body_len);
+    }
+  } else if (rec_type == OD_NFC_REC_RAW_NDEF) {
+    record_len = data_len;
+    if (record_len == 0u || record_len > sizeof(s_od_nfc_write_blocks)) {
+      return false;
+    }
+    memcpy(blocks, data, record_len);
+  } else {
+    return false;
+  }
+
+  CORE_ENTER_CRITICAL();
+
+  od_nfc_tnb132m_prime_type3(tagconfig);
+  sl_udelay_wait(2000);
+
+  ai[0] = 0x10u;
+  ai[1] = 0x02u;
+  ai[2] = 0x01u;
+  ai[3] = 0x00u;
+  ai[4] = 0x3Cu;
+  ai[11] = (uint8_t)((record_len >> 16) & 0xFFu);
+  ai[12] = (uint8_t)((record_len >> 8) & 0xFFu);
+  ai[13] = (uint8_t)(record_len & 0xFFu);
+
+  if (od_nfc_type3_paged_block_read16(tagconfig, 0x48u, 0x00u, cur_ai)
+      && (cur_ai[0] & 0xF0u) == 0x10u) {
+    ai[10] = cur_ai[10];
+  }
+  sum = 0u;
+  for (i = 0u; i < 14u; i++) {
+    sum = (uint16_t)(sum + ai[i]);
+  }
+  ai[14] = (uint8_t)(sum >> 8);
+  ai[15] = (uint8_t)(sum & 0xFFu);
+
+  if (!od_nfc_type3_paged_block_write16(tagconfig, 0x48u, 0x00u, ai)) {
+    CORE_EXIT_CRITICAL();
+    return false;
+  }
+  sl_udelay_wait(10000);
+  need_blocks = (uint8_t)((record_len + 15u) / 16u);
+  for (i = 0u; i < need_blocks; i++) {
+    uint8_t byte_off = (uint8_t)(0x10u + i * 0x10u);
+    if (!od_nfc_type3_paged_block_write16(tagconfig, 0x40u, byte_off, &blocks[i * 16u])) {
+      CORE_EXIT_CRITICAL();
+      return false;
+    }
+    sl_udelay_wait(10000);
+  }
+
+  CORE_EXIT_CRITICAL();
+  return true;
 }
