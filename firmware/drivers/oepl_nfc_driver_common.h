@@ -39,5 +39,6 @@ bool oepl_nfc_init(void);
 bool oepl_nfc_write_url(const uint8_t* url_buffer, size_t length);
 bool oepl_nfc_write_raw(const uint8_t* raw_buffer, size_t length);
 bool oepl_nfc_write(oepl_nfc_buffer_type_t content_type, const uint8_t* raw_buffer, size_t length);
+bool oepl_nfc_is_writing(void);
 
 #endif

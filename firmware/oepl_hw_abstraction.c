@@ -398,7 +398,7 @@ static void gpioint_cb(uint8_t pin, void* ctx)
   if(gpio_hwval && (pin == (gpio_hwval & 0xF))) {
     ((oepl_hw_gpio_cb_t)ctx)(GENERIC_GPIO, RISING);
   }
-  if(nfcfd_hwval && (pin == (nfcfd_hwval & 0xF))) {
+  if(nfcfd_hwval && (pin == (nfcfd_hwval & 0xF)) && !oepl_nfc_is_writing()) {
     ((oepl_hw_gpio_cb_t)ctx)(NFC_WAKE, RISING);
   }
 }

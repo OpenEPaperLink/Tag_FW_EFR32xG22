@@ -37,6 +37,7 @@
 // -----------------------------------------------------------------------------
 static const oepl_efr32xg22_nfcconfig_t* cfg = NULL;
 static const oepl_nfc_driver_desc_t* drv = NULL;
+static volatile bool is_writing = false;
 
 // -----------------------------------------------------------------------------
 //                          Public Function Definitions
@@ -58,16 +59,17 @@ bool oepl_nfc_init(void)
   }
 
   // Detect driver type
+  is_writing = true;
   if(tagcfg->hwtype == SOLUM_AUTODETECT) {
     // For all we know, all SoluM devices have a TNB132M
     if(oepl_nfc_driver_tnb132m.init(tagcfg->nfc)) {
       drv = &oepl_nfc_driver_tnb132m;
       cfg = tagcfg->nfc;
-      return true;
     }
   }
+  is_writing = false;
 
-  return false;
+  return drv != NULL;
 }
 
 bool oepl_nfc_write_url(const uint8_t* url_buffer, size_t length)
@@ -87,5 +89,13 @@ bool oepl_nfc_write(oepl_nfc_buffer_type_t content_type, const uint8_t* raw_buff
     return false;
   }
 
-  return drv->write(cfg, content_type, raw_buffer, length);
+  is_writing = true;
+  bool res = drv->write(cfg, content_type, raw_buffer, length);
+  is_writing = false;
+  return res;
+}
+
+bool oepl_nfc_is_writing(void)
+{
+  return is_writing;
 }
