@@ -6,12 +6,12 @@
 #include "oepl_app.h"
 #include "oepl_radio.h"
 #include "oepl_display.h"
+#include "oepl_nfc_driver_common.h"
 
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_emu.h"
 #include "em_wdog.h"
-#include "em_i2c.h"
 #include "em_iadc.h"
 #include "em_rmu.h"
 #include "gpiointerrupt.h"
@@ -310,200 +310,7 @@ void oepl_hw_init(void)
 
   // Setup NFC is done ad-hoc since it may involve power up/down of the NFC chip
   if(tagconfig->nfc) {
-    if(tagconfig->hwtype == SOLUM_AUTODETECT) {
-      // All solum EFR32BG22 based tags seem to have TNB132M NFC chips which are undocumented.
-      
-      // Pending useful documentation of how to talk to it, let's just use the power output to
-      // detect a field.
-
-      GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeWiredAndFilter, 0);
-      GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeWiredAndFilter, 0);
-
-      GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModeWiredOrPullDown, 1);
-
-      // Init sequence captured on HW
-      sl_udelay_wait(40000);
-
-      {
-        // Use default settings
-        I2C_Init_TypeDef i2cInit = I2C_INIT_DEFAULT;
-
-        size_t i2cnum;
-        switch((uint32_t)tagconfig->nfc->i2c) {
-          #if defined(I2C0)
-          case (uint32_t) I2C0:
-            i2cnum = 0;
-            CMU_ClockEnable(cmuClock_I2C0, true);
-            break;
-          #endif
-          #if defined(I2C1)
-          case (uint32_t) I2C1:
-            i2cnum = 1;
-            CMU_ClockEnable(cmuClock_I2C1, true);
-            break;
-          #endif
-          #if defined(I2C2)
-          case (uint32_t) I2C2:
-            i2cnum = 2;
-            CMU_ClockEnable(cmuClock_I2C2, true);
-            break;
-          #endif
-          default:
-            oepl_hw_crash(DBG_HW, false, "Unknown I2C peripheral\n");
-            while(1);
-        }
-
-        // Route I2C pins to GPIO
-        GPIO->I2CROUTE[i2cnum].SDAROUTE = (GPIO->I2CROUTE[0].SDAROUTE & ~_GPIO_I2C_SDAROUTE_MASK)
-                              | (tagconfig->nfc->SDA.port << _GPIO_I2C_SDAROUTE_PORT_SHIFT
-                              | (tagconfig->nfc->SDA.pin << _GPIO_I2C_SDAROUTE_PIN_SHIFT));
-        GPIO->I2CROUTE[i2cnum].SCLROUTE = (GPIO->I2CROUTE[0].SCLROUTE & ~_GPIO_I2C_SCLROUTE_MASK)
-                              | (tagconfig->nfc->SCL.port << _GPIO_I2C_SCLROUTE_PORT_SHIFT
-                              | (tagconfig->nfc->SCL.pin << _GPIO_I2C_SCLROUTE_PIN_SHIFT));
-        GPIO->I2CROUTE[i2cnum].ROUTEEN = GPIO_I2C_ROUTEEN_SDAPEN | GPIO_I2C_ROUTEEN_SCLPEN;
-
-        // Initialize the I2C
-        I2C_Init(tagconfig->nfc->i2c, &i2cInit);
-
-        // Enable automatic STOP on NACK
-        tagconfig->nfc->i2c->CTRL = I2C_CTRL_AUTOSN;
-      }
-
-      {
-        // Transfer structure
-        I2C_TransferSeq_TypeDef i2cTransfer;
-        I2C_TransferReturn_TypeDef result;
-        uint8_t txBuffer[2];
-
-        txBuffer[0] = 0x21;
-        txBuffer[1] = 0x04;
-
-        // Initialize I2C transfer
-        i2cTransfer.addr          = 0x30 << 1;
-        i2cTransfer.flags         = I2C_FLAG_WRITE;
-        i2cTransfer.buf[0].data   = txBuffer;
-        i2cTransfer.buf[0].len    = 2;
-        i2cTransfer.buf[1].data   = NULL;
-        i2cTransfer.buf[1].len    = 0;
-
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
-
-        // Send data
-        while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
-        }
-
-        if (result != i2cTransferDone) {
-          DPRINTF("I2C fail %08x\n", result);
-        }
-      }
-
-      {
-        // Transfer structure
-        I2C_TransferSeq_TypeDef i2cTransfer;
-        I2C_TransferReturn_TypeDef result;
-        uint8_t txBuffer[1 + 1];
-
-        txBuffer[0] = 0x25;
-        txBuffer[1] = 0x00;
-
-        // Initialize I2C transfer
-        i2cTransfer.addr          = 0x30 << 1;
-        i2cTransfer.flags         = I2C_FLAG_WRITE_READ;
-        i2cTransfer.buf[0].data   = txBuffer;
-        i2cTransfer.buf[0].len    = 1;
-        i2cTransfer.buf[1].data   = &txBuffer[1];
-        i2cTransfer.buf[1].len    = 1;
-
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
-
-        // Send data
-        while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
-        }
-
-        if (result != i2cTransferDone) {
-           DPRINTF("I2C fail %08x\n", result);
-        } else {
-          DPRINTF("I2C Response %02x\n", txBuffer[1]);
-        }
-      }
-
-      sl_udelay_wait(20000);
-
-      {
-        // Transfer structure
-        I2C_TransferSeq_TypeDef i2cTransfer;
-        I2C_TransferReturn_TypeDef result;
-        uint8_t txBuffer[1 + 16];
-
-        txBuffer[0] = 0x30;
-
-        // Initialize I2C transfer
-        i2cTransfer.addr          = 0x43 << 1;
-        i2cTransfer.flags         = I2C_FLAG_WRITE_READ;
-        i2cTransfer.buf[0].data   = txBuffer;
-        i2cTransfer.buf[0].len    = 1;
-        i2cTransfer.buf[1].data   = txBuffer;
-        i2cTransfer.buf[1].len    = 16;
-
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
-
-        // Send data
-        while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
-        }
-
-        if (result != i2cTransferDone) {
-           DPRINTF("I2C fail %08x\n", result);
-        } else {
-          DPRINTF("I2C Response: ");
-          for(size_t i = 0; i < sizeof(txBuffer) - 1; i++) {
-            DPRINTF("%02x ", txBuffer[1+i]);
-          }
-        }
-      }
-
-      sl_udelay_wait(20000);
-
-      {
-        // Transfer structure
-        I2C_TransferSeq_TypeDef i2cTransfer;
-        I2C_TransferReturn_TypeDef result;
-        uint8_t txBuffer[2];
-
-        txBuffer[0] = 0x21;
-        txBuffer[1] = 0x01;
-
-        // Initialize I2C transfer
-        i2cTransfer.addr          = 0x30 << 1;
-        i2cTransfer.flags         = I2C_FLAG_WRITE;
-        i2cTransfer.buf[0].data   = txBuffer;
-        i2cTransfer.buf[0].len    = 2;
-        i2cTransfer.buf[1].data   = NULL;
-        i2cTransfer.buf[1].len    = 0;
-
-        result = I2C_TransferInit(I2C0, &i2cTransfer);
-
-        // Send data
-        while (result == i2cTransferInProgress) {
-          result = I2C_Transfer(I2C0);
-        }
-
-        if (result != i2cTransferDone) {
-           DPRINTF("I2C fail %08x\n", result);
-        }
-      }
-
-      sl_udelay_wait(14000);
-
-      // Turn it off
-      GPIO_PinOutClear(tagconfig->nfc->power.port, tagconfig->nfc->power.pin);
-      GPIO_PinModeSet(tagconfig->nfc->SCL.port, tagconfig->nfc->SCL.pin, gpioModeInput, 1);
-      GPIO_PinModeSet(tagconfig->nfc->SDA.port, tagconfig->nfc->SDA.pin, gpioModeInput, 1);
-
-      GPIO_PinModeSet(tagconfig->nfc->power.port, tagconfig->nfc->power.pin, gpioModeInput, 1);
-
+    if(oepl_nfc_init()) {
       nfcpwr_hwval = 0x80 | (tagconfig->nfc->power.port << 4) | tagconfig->nfc->power.pin;
       nfcsda_hwval = 0x80 | (tagconfig->nfc->SDA.port << 4) | tagconfig->nfc->SDA.pin;
     }
@@ -591,7 +398,7 @@ static void gpioint_cb(uint8_t pin, void* ctx)
   if(gpio_hwval && (pin == (gpio_hwval & 0xF))) {
     ((oepl_hw_gpio_cb_t)ctx)(GENERIC_GPIO, RISING);
   }
-  if(nfcfd_hwval && (pin == (nfcfd_hwval & 0xF))) {
+  if(nfcfd_hwval && (pin == (nfcfd_hwval & 0xF)) && !oepl_nfc_is_writing()) {
     ((oepl_hw_gpio_cb_t)ctx)(NFC_WAKE, RISING);
   }
 }
@@ -790,18 +597,12 @@ const char* oepl_hw_get_swsuffix(void)
 
 bool oepl_hw_nfc_write_url(const uint8_t* url_buffer, size_t length)
 {
-  // Todo: implement nonblocking I2C driver for NFC
-  (void) url_buffer;
-  (void) length;
-  return false;
+  return oepl_nfc_write_url(url_buffer, length);
 }
 
 bool oepl_hw_nfc_write_raw(const uint8_t* raw_buffer, size_t length)
 {
-  // Todo: implement nonblocking I2C driver for NFC
-  (void) raw_buffer;
-  (void) length;
-  return false;
+  return oepl_nfc_write_raw(raw_buffer, length);
 }
 
 static void deepsleep_timer_cb(sl_sleeptimer_timer_handle_t *handle, void *data)
@@ -955,6 +756,9 @@ void oepl_hw_crash(oepl_hw_debug_module_t module, bool reboot, const char* fmt, 
     case DBG_FLASH:
       printf("\n[FLASH-CRASH] ");
       break;
+    case DBG_NFC:
+      printf("\n[NFC-CRASH] ");
+      break;
     case DBG_OTHER:
       printf("\n[OTHER-CRASH] ");
       break;
@@ -1013,6 +817,9 @@ void oepl_hw_debugprint(oepl_hw_debug_module_t module, const char* fmt, ...)
       case DBG_FLASH:
         printf("\n[FLASH]");
         break;
+      case DBG_NFC:
+        printf("\n[NFC]");
+        break;
       case DBG_OTHER:
         printf("\n[OTHER]");
         break;
@@ -1068,7 +875,7 @@ static void em_cb(sl_power_manager_em_t from,
       case SL_POWER_MANAGER_EM3:
         sl_sleeptimer_start_periodic_timer_ms(
           &nfc_poll_timer_handle,
-          100,
+          200,
           nfc_poll_timer_cb, NULL, 0xFF, SL_SLEEPTIMER_NO_HIGH_PRECISION_HF_CLOCKS_REQUIRED_FLAG 
         );
         break;

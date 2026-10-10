@@ -272,11 +272,11 @@ void oepl_app_process(void)
           DPRINTF("NFC %s indicated\n", data_to_process.AP_data.dataType == DATATYPE_NFC_URL_DIRECT ? "URL" : "raw");
           oepl_stored_content_version_t stored_ver;
           oepl_nvm_status_t status = oepl_nvm_setting_get(OEPL_NFC_CONTENT_VERSION, &stored_ver, sizeof(stored_ver));
-          if(status == NVM_SUCCESS) {
-            if(data_to_process.AP_data.dataVer == stored_ver.md5 && data_to_process.AP_data.dataSize == stored_ver.size) {
-              DPRINTF("We already have this content in the NFC\n");
-              application_state_transition(AWAITING_CONFIRMATION);
-            }
+          if(status == NVM_SUCCESS &&
+             data_to_process.AP_data.dataVer == stored_ver.md5 &&
+             data_to_process.AP_data.dataSize == stored_ver.size) {
+            DPRINTF("We already have this content in the NFC\n");
+            application_state_transition(AWAITING_CONFIRMATION);
           } else {
             application_state_transition(DOWNLOAD);
           }
