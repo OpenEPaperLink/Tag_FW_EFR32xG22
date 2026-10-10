@@ -1,7 +1,8 @@
 import argparse
 import bincopy
-import time
 import os
+import sys
+import time
 
 from pyocd.core.exceptions import TargetSupportError
 from pyocd.core.helpers import ConnectHelper
@@ -9,8 +10,6 @@ from pyocd.core.session import Session
 from pyocd.core.target import Target
 from pyocd.subcommands import pack_cmd
 from pyocd.flash.file_programmer import FileProgrammer
-
-import sys
 
 # Documentation: https://docs.silabs.com/shared-content/latest/efr32-dci-swd-programming/03-debug-challenge-interface-dci
 class DCI:
@@ -81,7 +80,7 @@ class DCI:
     return rsp
 
 
-def get_session(device : str, detect_cores : bool, adapter : str | None, list_adapters : bool = False, verbose : bool = False) -> Session | None:
+def get_session(device : str, detect_cores : bool, adapter : str | None, pack : str | None = None, list_adapters : bool = False, verbose : bool = False) -> Session | None:
   # Start by figuring out how to connect
   probes = ConnectHelper.get_all_connected_probes(blocking=False)
   if list_adapters or verbose:
@@ -119,16 +118,28 @@ def get_session(device : str, detect_cores : bool, adapter : str | None, list_ad
     'allow_no_cores': not detect_cores
   }
 
+  # Load target support from a local CMSIS Device Family Pack.
+  if pack:
+    pack_path = os.path.abspath(os.path.expanduser(pack))
+
+    if not os.path.isfile(pack_path):
+      raise FileNotFoundError(f"CMSIS Device Family Pack not found: {pack_path}")
+
+    options["pack"] = pack_path
+
   if detect_cores:
     options['jlink.device'] = device
   try:
     return Session(probe, options=options)
   except TargetSupportError:
     print("Target support not found, trying to automatically install...")
+    targetfamily = device.upper()
+    if 'EFR32' in targetfamily:
+      targetfamily = targetfamily[:9]
     args = argparse.Namespace(
       update=True,
-      patterns=["{}*".format(a.device[:9].upper())],
-      verbose=0,
+      patterns=["{}*".format(device[:9].upper())],
+      verbose=True,
       quiet=0,
       clean=False,
       no_download=False
@@ -136,7 +147,12 @@ def get_session(device : str, detect_cores : bool, adapter : str | None, list_ad
     cmd = pack_cmd.PackInstallSubcommand(args)
     cmd.invoke()
     print("Retrying...")
-    return Session(probe, options=options)
+
+    try:
+      return Session(probe, options=options)
+    except (KeyError, TargetSupportError) as e:
+      print(f"Automatic install of the target support pack was unsuccessful. Please download the correct CMSIS-DFP pack for target {targetfamily} from https://keil.arm.com/packs/?q={targetfamily}&pack-search= and provide it to this script by adding `--pack <path to .pack file>` to the script invocation")
+      return None
 
 
 def reset_target(session : Session) -> None:
@@ -163,7 +179,11 @@ def main(argv):
                       help="Erase the flash content (except UD) before writing the new firmware")
   parser.add_argument('--dump-ud',
                       action='store_true',
-                      help="Read the contents of the UD area")
+                      help="Read and print the contents of the UD area")
+  parser.add_argument("--dump-ud-bin",
+                      type=str,
+                      required=False,
+                      help="Write the 1024-byte UserData area as raw binary to this file")
   parser.add_argument('-f', '--firmware',
                       type=str,
                       required=False,
@@ -176,6 +196,10 @@ def main(argv):
                       type=str,
                       default="EFR32BG22C224F512IM40",
                       help="The device part number we'll be interacting with")
+  parser.add_argument("--pack",
+                      type=str,
+                      required=False,
+                      help=("Path to a local CMSIS Device Family Pack (.pack) used by pyOCD"))
   parser.add_argument('-a', '--adapter',
                       type=str,
                       required=False,
@@ -188,7 +212,7 @@ def main(argv):
                       help="Print verbose output")
   a = parser.parse_args(argv)
 
-  session = get_session(a.device, False, a.adapter, list_adapters=a.list_adapters, verbose=a.verbose)
+  session = get_session(a.device, False, a.adapter, pack=a.pack, list_adapters=a.list_adapters, verbose=a.verbose)
 
   if not session:
     return 0
@@ -226,20 +250,26 @@ def main(argv):
   reset_target(session)
 
   # Create new session, now we should be able to detect the cores, otherwise we won't be able to flash
-  session = get_session(a.device, True, a.adapter, verbose=a.verbose)
+  session = get_session(a.device, True, a.adapter, pack=a.pack, verbose=a.verbose)
   with session:
-    if a.dump_ud:
-      ud_content = session.target.read_memory_block32(0x0fe00000, 0x100)
-      print("Content of UD:")
-      print("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F")
-      line = "000: "
-      for i in range(len(ud_content)):
-        if i > 0 and i % 4 == 0:
-          print(line)
-          line = "{:03x}: ".format(i * 4)
-        w = ud_content[i].to_bytes(length=4, byteorder="little")
-        for b in w:
-          line += "{:02x} ".format(b)
+    if a.dump_ud or a.dump_ud_bin:
+      ud_words = session.target.read_memory_block32(0x0fe00000, 0x100)
+      ud_bytes = b"".join(w.to_bytes(length=4, byteorder="little") for w in ud_words)
+      if a.dump_ud:
+        print("Content of UD:")
+        print("      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F")
+        line = "000: "
+        for i in range(len(ud_bytes)):
+          if i > 0 and i % 16 == 0:
+            print(line)
+            line = "{:03x}: ".format(i * 16)
+          line += "{:02x} ".format(ud_bytes[i])
+        print(line)
+
+      if a.dump_ud_bin:
+        with open(a.dump_ud_bin, "wb") as output_file:
+          output_file.write(ud_bytes)
+          print(f"Wrote {len(ud_bytes)} bytes to {a.dump_ud_bin}")
 
     if a.firmware:
       if a.firmware == "latest":
