@@ -184,6 +184,7 @@ static void display_refresh_and_wait(void)
      (params->x_res_effective == 184 && params->y_res_effective == 360) ||
      (params->x_res_effective == 200 && params->y_res_effective == 200) ||
      (params->x_res_effective == 160 && params->y_res_effective == 296) ||
+     (params->x_res_effective == 224 && params->y_res_effective == 480) ||
      (params->x_res_effective == 400 && params->y_res_effective == 300) ||
      (params->y_res_effective == 384 && params->x_res_effective == 184)) {
     oepl_display_driver_wait(10);
@@ -256,6 +257,25 @@ static void display_reinit(void)
     EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x22});
     EMIT_INSTRUCTION_STATIC_DATA(0xB4, {0xD0});
     EMIT_INSTRUCTION_STATIC_DATA(0xB5, {0x03});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
+    oepl_display_driver_wait(300);
+  } else if(params->x_res_effective == 224 && params->y_res_effective == 480) {
+    // From captured waveform
+    DPRINTF("Pulsing reset twice\n");
+    oepl_display_driver_common_pulse_reset(200, 40, 200);
+    oepl_display_driver_wait(10);
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x29});
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x22, 0x78, 0x0A, 0x22});
+    EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0xC7, 0xD7, 0x1D, 0x1E});
+    EMIT_INSTRUCTION_STATIC_DATA(0x41, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+    EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x02, 0x02});
+    EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+    EMIT_INSTRUCTION_STATIC_DATA(0x65, {0x00, 0x08, 0x00, 0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x22});
     EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
     EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x08});
     oepl_display_driver_wait(300);
