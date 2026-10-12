@@ -6,19 +6,25 @@
 #include "oepl_radio.h"
 #include "oepl-definitions.h"
 #include "oepl_drawing_capi.h"
-#include "oepl_display_driver_memlcd.h"
-#include "oepl_display_driver_IL91874.h"
-#include "oepl_display_driver_unissd.h"
-#include "oepl_display_driver_dualssd.h"
-#include "oepl_display_driver_uc8179.h"
-#include "oepl_display_driver_uc8159.h"
-#include "oepl_display_driver_ucvar026.h"
-#include "oepl_display_driver_ucvar029.h"
-#include "oepl_display_driver_ucvar043.h"
-#include "oepl_display_driver_ucbwry.h"
-#include "oepl_display_driver_jd.h"
-#include "oepl_display_driver_interleaved.h"
-#include "oepl_display_driver_GDEW0583Z83.h"
+
+#if __has_include("oepl_display_driver_custom.h")
+   #include "oepl_display_driver_custom.h"
+#else
+   #include "oepl_display_driver_memlcd.h"
+   #include "oepl_display_driver_IL91874.h"
+   #include "oepl_display_driver_unissd.h"
+   #include "oepl_display_driver_dualssd.h"
+   #include "oepl_display_driver_uc8179.h"
+   #include "oepl_display_driver_uc8159.h"
+   #include "oepl_display_driver_ucvar026.h"
+   #include "oepl_display_driver_ucvar029.h"
+   #include "oepl_display_driver_ucvar043.h"
+   #include "oepl_display_driver_ucbwry.h"
+   #include "oepl_display_driver_jd.h"
+   #include "oepl_display_driver_interleaved.h"
+   #include "oepl_display_driver_GDEW0583Z83.h"
+#endif
+
 #include "fonts/fonts.h"
 #include "common/bitmaps.h"
 
@@ -86,11 +92,18 @@ static bool is_drawing = false;
 
 static const oepl_display_driver_desc_t* driver = NULL;
 
+#if __has_include("oepl_display_custom.inl")
+#include "oepl_display_custom.inl"
+#endif
+
 // -----------------------------------------------------------------------------
 //                          Public Function Definitions
 // -----------------------------------------------------------------------------
 void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
 {
+#if __has_include("oepl_display_driver_custom.h")
+   driver = &oepl_display_driver_custom;
+#else
   switch(driverconfig->ctrl) {
     case CTRL_MEMLCD:
       driver = &oepl_display_driver_memlcd;
@@ -135,6 +148,7 @@ void oepl_display_init(oepl_efr32xg22_displayparams_t* driverconfig)
       oepl_hw_crash(DBG_DISPLAY, false, "Error: Lacking display driver implementation\n");
       return;
   }
+#endif
 
   oepl_display_parameters_t displayparams = {
     .x_res = driverconfig->xres,
@@ -359,6 +373,7 @@ void oepl_display_draw(oepl_display_draw_done_cb_t cb)
 // -----------------------------------------------------------------------------
 //                          Static Function Definitions
 // -----------------------------------------------------------------------------
+#ifndef HAS_CUSTOM_ADD_OVERLAYS
 static void add_overlays(uint32_t overlay_mask)
 {
   if(overlay_mask & OVERLAY_FLAG_LOW_BATTERY) {
@@ -387,7 +402,9 @@ static void add_overlays(uint32_t overlay_mask)
     }
   }
 }
+#endif
 
+#ifndef HAS_CUSTOM_CONTENT_SPLASH
 static void add_rendered_content_splash(void)
 {
   uint8_t hwid = oepl_hw_get_hwid();
@@ -567,7 +584,9 @@ static void add_rendered_content_splash(void)
       break;
   }
 }
+#endif
 
+#ifndef HAS_CUSTOM_CONTENT_AP_FOUND
 static void add_rendered_content_ap_found(void)
 {
   int8_t rssi, temperature = -127;
@@ -577,6 +596,7 @@ static void add_rendered_content_ap_found(void)
   uint8_t hwid = oepl_hw_get_hwid();
   uint16_t mv = 0;
   bool accentcolor = num_colors >= 3 ? COLOR_RED : COLOR_BLACK;
+  size_t vres = xres > yres ? yres : xres;
 
   if(!oepl_radio_get_ap_link(&currentChannel, APmac, &lqi, &rssi)) {
     rssi = -127;
@@ -601,8 +621,8 @@ static void add_rendered_content_ap_found(void)
     C_epdSetFont(&FreeSansBold18pt7b);
     C_epdPrintf(270, 55, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 792 && yres >= 272) {
     // 5.8" (weird aspect ratio)
@@ -613,8 +633,8 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(10, 71, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(10, 89, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 120, 42, 3, 3, "https://openepaperlink.eu/tag/0/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 522 && yres >= 122) {
     // 4.3" (weird aspect ratio)
@@ -626,8 +646,8 @@ static void add_rendered_content_ap_found(void)
     C_epdSetFont(&FreeSansBold18pt7b);
     C_epdPrintf(270, 55, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 400 && yres >= 300) {
     // 4.2"
@@ -638,8 +658,8 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(10, 71, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(10, 89, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 360 && yres >= 184) {
     // 2.6"
@@ -650,8 +670,8 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(10, 71, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(10, 89, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 284 && yres >= 168) {
     // 2.9"
@@ -662,8 +682,8 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(10, 71, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(10, 89, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else if(xres >= 296 && yres >= 160) {
     // 2.2"
@@ -674,8 +694,8 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(10, 71, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(10, 89, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(10, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(10, yres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(10, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(10, vres - 25, COLOR_BLACK, ROTATE_0, "MAC: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
     C_addQR(xres - 66, 47, 3, 2, "https://openepaperlink.eu/tag/1/%02X/%02X%02X%02X%02X%02X%02X%02X%02X/", hwid, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   } else {
     // Anything smaller
@@ -685,11 +705,13 @@ static void add_rendered_content_ap_found(void)
     C_epdPrintf(5, 42, accentcolor, ROTATE_0, "RSSI: %ddBm    LQI: %d", rssi, lqi);
     C_epdPrintf(5, 60, accentcolor, ROTATE_0, "Ch %d", currentChannel);
     C_epdSetFont(&FreeSans9pt7b);
-    C_epdPrintf(5, yres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
-    C_epdPrintf(0, yres - 25, COLOR_BLACK, ROTATE_0, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
+    C_epdPrintf(5, vres - 43, COLOR_BLACK, ROTATE_0, "Battery: %d.%02dV Temp: %d'C", mv / 1000, (mv % 1000)/10, temperature);
+    C_epdPrintf(0, vres - 25, COLOR_BLACK, ROTATE_0, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6], mac[7]);
   }
 }
+#endif
 
+#ifndef HAS_CUSTOM_CONTENT_AP_NOT_FOUND
 static void add_rendered_content_ap_not_found(void)
 {
   uint8_t hwid = oepl_hw_get_hwid();
@@ -799,15 +821,20 @@ static void add_rendered_content_ap_not_found(void)
     C_epdPrintf(2, 25, COLOR_BLACK, ROTATE_0, "Couldn't find an AP :(");
   }
 }
+#endif
 
+#ifndef HAS_CUSTOM_CONTENT_DEEP_SLEEP
 static void add_rendered_content_deepsleep(void)
 {
   C_epdSetFont(&FreeSansBold24pt7b);
   C_epdPrintf((xres / 2) - 12, (yres / 2) - 12, COLOR_BLACK, ROTATE_0, "zZz");
 }
+#endif
 
+#ifndef HAS_CUSTOM_CONTENT_FWU
 static void add_rendered_content_fwu(void)
 {
   C_epdSetFont(&FreeSansBold24pt7b);
   C_epdPrintf((xres / 2) - 12, (yres / 2) - 12, COLOR_BLACK, ROTATE_0, "FWU");
 }
+#endif
