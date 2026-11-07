@@ -185,7 +185,7 @@ void oepl_hw_init(void)
     case DBG_SWO:
       sl_iostream_set_system_default(sl_iostream_instance_swo_info.handle);
       break;
-    #if SL_CATALOG_IOSTREAM_RTT_PRESENT
+    #if defined(SEGGER_RTT_SECTION)
     case DBG_RTT:
       sl_iostream_set_system_default(sl_iostream_instance_rtt_info.handle);
       break;
