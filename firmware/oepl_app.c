@@ -195,7 +195,7 @@ void oepl_app_process(void)
           DPRINTF("  - Size %ldB\n", data_to_process.AP_data.dataSize);
           DPRINTF("  - Checksum %08lx%08lx\n", (uint32_t)(data_to_process.AP_data.dataVer >> 32), (uint32_t)data_to_process.AP_data.dataVer);
 
-          if(data_to_process.AP_data.dataTypeArgument & IMG_EXTTYPE_LUT_MASK) {
+          if((data_to_process.AP_data.dataTypeArgument & IMG_EXTTYPE_LUT_MASK) > 1) {
             DPRINTF("Custom LUT support not implemented\n");
             // Don't download, skip to confirmation
             application_state_transition(AWAITING_CONFIRMATION);
