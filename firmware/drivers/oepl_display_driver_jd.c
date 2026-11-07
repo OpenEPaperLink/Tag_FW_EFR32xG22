@@ -186,6 +186,7 @@ static void display_refresh_and_wait(void)
      (params->x_res_effective == 160 && params->y_res_effective == 296) ||
      (params->x_res_effective == 224 && params->y_res_effective == 480) ||
      (params->x_res_effective == 400 && params->y_res_effective == 300) ||
+     (params->x_res_effective == 792 && params->y_res_effective == 272) ||
      (params->y_res_effective == 384 && params->x_res_effective == 184)) {
     oepl_display_driver_wait(10);
     DPRINTF("Turn on EPD power rails\n");
@@ -281,6 +282,28 @@ static void display_reinit(void)
     oepl_display_driver_wait(300);
   } else if(params->x_res_effective == 400 && params->y_res_effective == 300) {
     // From captured waveform https://github.com/OpenEPaperLink/Tag_FW_EFR32xG22/pull/16
+    EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});
+    EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x26, 0x78, 0x24, 0x26});
+    EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
+    EMIT_INSTRUCTION_STATIC_DATA(0x06, {0xC0, 0xC0, 0xC0});
+    EMIT_INSTRUCTION_VAR_DATA(EPD_CMD_RESOLUTION_SETTING, {params->x_res_effective >> 8, params->x_res_effective & 0xFF, params->y_res_effective >> 8, params->y_res_effective & 0xFF});
+    EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x02});
+    EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x17});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xA5});
+    EMIT_INSTRUCTION_STATIC_DATA(0xEF, {0x01, 0x32, 0x08, 0x32, 0x0E, 0x4B, 0x19, 0x4B});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDB, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xF9, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xCF, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDF, {0x3C});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFD, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDC, {0x00});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDD, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x01});
+    EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});
+    EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+  } else if(params->x_res_effective == 792 && params->y_res_effective == 272) {
+    // Copied from 4.2 init since it is flagging the same ctrltype. Waiting for feedback.
     EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x0F, 0x29});
     EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x26, 0x78, 0x24, 0x26});
     EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x44});
