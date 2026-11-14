@@ -67,6 +67,10 @@ source:
   - { path: ../../firmware/shared/oepl-definitions.h, directory: shared}
   - { path: ../../firmware/shared/oepl-proto.h, directory: shared }
   - { path: ../../firmware/sl_iostream_eusart_euart_debug_config.h }
+  - { path: ../../firmware/drivers/oepl_nfc_driver_common.c, directory: drivers}
+  - { path: ../../firmware/drivers/oepl_nfc_driver_tnb132m.c, directory: drivers}
+  - { path: ../../firmware/drivers/oepl_nfc_driver_common.h, directory: drivers}
+  - { path: ../../firmware/drivers/oepl_nfc_driver_tnb132m.h, directory: drivers}
 
 include:
   - path: ""
@@ -273,7 +277,7 @@ configuration:
     }
 ## NB: Be careful when editing the following line!!  it is processed by AWK
 ##     and extra spaces will cause the version to be extracted incorrectly !
-  - {name: SL_APPLICATION_VERSION, value: '42'}
+  - {name: SL_APPLICATION_VERSION, value: '43'}
 config_file:
   - path: ../../firmware/sl_iostream_eusart_euart_debug_config.h
     override:

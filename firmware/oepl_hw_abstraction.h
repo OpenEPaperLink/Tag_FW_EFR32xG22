@@ -37,6 +37,7 @@ typedef enum {
   DBG_DISPLAY,
   DBG_NVM,
   DBG_FLASH,
+  DBG_NFC,
   DBG_OTHER
 } oepl_hw_debug_module_t;
 

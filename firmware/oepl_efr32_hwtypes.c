@@ -393,6 +393,10 @@ uint8_t oepl_efr32xg22_get_oepl_hwid(void)
         return SOLUM_M3_BWRY_29;
       case STYPE_SIZE_30_BWRY:
         return SOLUM_M3_BWRY_30;
+      case STYPE_SIZE_35_BWRY:
+        return SOLUM_M3_BWRY_35;
+      case STYPE_SIZE_35_BWRY_HIGHRES:
+        return SOLUM_M3_BWRY_35_HIGHRES;
       case STYPE_SIZE_42_BWRY:
         return SOLUM_M3_BWRY_42;
       case STYPE_SIZE_43_BWRY:
@@ -517,16 +521,25 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
       // Maybe these are the same?
       case 0x1C:
         // 1.6" BWRY
+      case 0x1D:
+        // 1.6" 200px BWRY WT
+      case 0x37:
+        // 1.6" 200px BWRY, EL016F5C4C MFD 2025-06, neuere ctrltype-Revision
       case 0x1E:
         // 2.2" BWRY WT
       case 0x20:
         // 2.9" BWRY
       case 0x2B:
         // 4.2" BWRY
+      case 0x23:
+        // 4.2" BWRY, EL042F5C4C, newer ctrltype revision
       case 0x2C:
         // 7.5" BWRY
       case 0x25:
         // 11.6" BWRY
+      case 0x2F:
+      case 0x35:
+        // 3.5" BWRY highres
         displayparams->ctrl = CTRL_JD;
         break;
       case 0x2A:
@@ -577,6 +590,12 @@ bool oepl_efr32xg22_get_displayparams(oepl_efr32xg22_displayparams_t* displaypar
       case STYPE_SIZE_029_FREEZER:
         displayparams->swapXY = true;
         displayparams->xoffset = 8;
+        break;
+      case STYPE_SIZE_35_BWRY:
+        displayparams->swapXY = true;
+        break;
+      case STYPE_SIZE_35_BWRY_HIGHRES:
+        displayparams->swapXY = true;
         break;
       case STYPE_SIZE_042:
         displayparams->mirrorY = true;

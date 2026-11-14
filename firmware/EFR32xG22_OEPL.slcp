@@ -27,6 +27,8 @@ source:
 - {path: drivers/oepl_display_driver_uc8179.c}
 - {path: drivers/oepl_display_driver_GDEW0583Z83.c}
 - {path: drivers/oepl_display_driver_common.c}
+- {path: drivers/oepl_nfc_driver_common.c}
+- {path: drivers/oepl_nfc_driver_tnb132m.c}
 - {path: oepl_efr32_hwtypes.c}
 - {path: oepl_hw_abstraction.c}
 - {path: oepl_led.c}
@@ -91,6 +93,8 @@ include:
   - {path: oepl_display_driver_interleaved.h}
   - {path: oepl_display_driver_GDEW0583Z83.h}
   - {path: oepl_display_driver_common.h}
+  - {path: oepl_nfc_driver_common.h}
+  - {path: oepl_nfc_driver_tnb132m.h}
 - path: 'common/QRCode/src'
   file_list:
     - {path: qrcode.h}
