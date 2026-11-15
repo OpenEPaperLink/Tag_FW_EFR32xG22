@@ -50,6 +50,10 @@ static void display_reinit(void);
 static void display_sleep(void);
 static void display_refresh_and_wait(void);
 
+static bool is_dual_792x272(void);
+static void display_reinit_792x272(void);
+static void display_draw_792x272(void);
+
 // -----------------------------------------------------------------------------
 //                                Global Variables
 // -----------------------------------------------------------------------------
@@ -86,6 +90,10 @@ static void display_init(const oepl_display_parameters_t* display_params)
 static void display_draw(void)
 {
   DPRINTF("enter JD draw\n");
+  if(is_dual_792x272()) {
+    display_draw_792x272();
+    return;
+  }
   display_reinit();
 
   // JD BWRY displays need to be fed a single frame with 2 bits per pixel, instead
@@ -394,4 +402,168 @@ static void display_reinit(void)
   } else {
     oepl_hw_crash(DBG_DISPLAY, false, "Unknown display resolution for JD driver\n");
   }
+}
+
+// -----------------------------------------------------------------------------
+//    5.8" BWRY 792x272 (SoluM EL058F5W4C): two cascaded controllers on one CS.
+//    Values from an SPI capture of the stock firmware, see
+//    https://github.com/OpenEPaperLink/Tag_FW_EFR32xG22/issues/48
+// -----------------------------------------------------------------------------
+#define DUAL_CMD_CASCADE_SELECT 0xA2
+#define DUAL_SELECT_BOTH 0x00
+#define DUAL_SELECT_MASTER 0x01
+#define DUAL_SELECT_SLAVE 0x02
+#define DUAL_HALF_WIDTH 396
+
+static bool is_dual_792x272(void)
+{
+  return params->x_res_effective == 792 && params->y_res_effective == 272;
+}
+
+static void display_reinit_792x272(void)
+{
+  display_reset();
+  oepl_display_driver_wait_busy(200, true);
+
+  // Read the panel's temperature sensor and feed it back, as the stock FW does
+  uint8_t temperature = 0x17;
+  oepl_display_driver_common_instruction(0x40, true);
+  oepl_display_driver_common_dataread(&temperature, 1, false);
+  DPRINTF("Panel temperature 0x%02x\n", temperature);
+  if(temperature == 0x00 || temperature > 0x40) {
+    temperature = 0x17;
+  }
+  oepl_display_driver_wait_busy(200, true);
+  EMIT_INSTRUCTION_VAR_DATA(0xE6, {temperature});
+  EMIT_INSTRUCTION_STATIC_DATA(0xE0, {0x03});
+  // BUSY drops after E0 and only comes back after A5, so don't wait on it here
+  oepl_display_driver_wait(10);
+  EMIT_INSTRUCTION_NO_DATA(0xA5);
+  sl_udelay_wait(500);
+  oepl_display_driver_wait_busy(200, true);
+
+  EMIT_INSTRUCTION_STATIC_DATA(DUAL_CMD_CASCADE_SELECT, {DUAL_SELECT_MASTER});
+  EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x03, 0x29});
+  EMIT_INSTRUCTION_STATIC_DATA(DUAL_CMD_CASCADE_SELECT, {DUAL_SELECT_BOTH});
+  EMIT_INSTRUCTION_STATIC_DATA(DUAL_CMD_CASCADE_SELECT, {DUAL_SELECT_SLAVE});
+  EMIT_INSTRUCTION_STATIC_DATA(0x00, {0x07, 0x29});
+  EMIT_INSTRUCTION_STATIC_DATA(DUAL_CMD_CASCADE_SELECT, {DUAL_SELECT_BOTH});
+  EMIT_INSTRUCTION_STATIC_DATA(0x01, {0x07, 0x00, 0x28, 0x78, 0x0A, 0x22});
+  EMIT_INSTRUCTION_STATIC_DATA(0x03, {0x10, 0x54, 0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0x06, {0xC0, 0xC0, 0xC0});
+  EMIT_INSTRUCTION_STATIC_DATA(0x30, {0x02});
+  EMIT_INSTRUCTION_STATIC_DATA(0x41, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0x50, {0x37});
+  EMIT_INSTRUCTION_STATIC_DATA(0x60, {0x02, 0x02});
+  EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_RESOLUTION_SETTING, {0x01, 0x8C, 0x01, 0x10});
+  EMIT_INSTRUCTION_STATIC_DATA(0x65, {0x00, 0x00, 0x00, 0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0x82, {0xAC});
+  EMIT_INSTRUCTION_STATIC_DATA(0xE7, {0x1C});
+  EMIT_INSTRUCTION_STATIC_DATA(0xE3, {0x77});
+  EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xA5});
+  EMIT_INSTRUCTION_STATIC_DATA(0xEF, {0x01, 0x1E, 0x06, 0x1E, 0x0E, 0x1C, 0x0E, 0x06});
+  EMIT_INSTRUCTION_STATIC_DATA(0xDB, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0xF9, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0xCF, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0xDF, {0x3F});
+  EMIT_INSTRUCTION_STATIC_DATA(0xFD, {0x01});
+  EMIT_INSTRUCTION_STATIC_DATA(0xE8, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0xDC, {0x00});
+  EMIT_INSTRUCTION_STATIC_DATA(0xDD, {0x01});
+  EMIT_INSTRUCTION_STATIC_DATA(0xDE, {0x01});
+  EMIT_INSTRUCTION_STATIC_DATA(0xFF, {0xE3});
+  EMIT_INSTRUCTION_STATIC_DATA(0xE9, {0x01});
+}
+
+static void render_2bpp_line(uint16_t y, uint8_t* drawline_b, uint8_t* drawline_r, uint8_t* drawline_y, uint8_t* outbuf)
+{
+  const size_t linebytes = params->x_res_effective / 8;
+  memset(drawline_b, 0, linebytes);
+  memset(drawline_r, 0, linebytes);
+  memset(drawline_y, 0, linebytes);
+
+  if (params->mirrorV) {
+    y = params->y_res_effective - y - 1;
+  }
+  C_renderDrawLine(drawline_b, y, COLOR_BLACK);
+  C_renderDrawLine(drawline_r, y, COLOR_RED);
+  C_renderDrawLine(drawline_y, y, COLOR_YELLOW);
+
+  for (uint16_t x = 0; x < params->x_res_effective;) {
+    uint8_t* temp = &(outbuf[x / 4]);
+    for (uint8_t shift = 0; shift < 4; shift++) {
+      *temp <<= 2;
+      uint16_t curByte = x / 8;
+      uint8_t curMask = (1 << (7 - (x % 8)));
+      if ((drawline_r[curByte] & curMask)) {
+        *temp |= 0x03;
+      } else if (drawline_y[curByte] & curMask) {
+        *temp |= 0x02;
+      } else if (drawline_b[curByte] & curMask) {
+      } else {
+        *temp |= 0x01;
+      }
+      x++;
+    }
+  }
+}
+
+static void display_draw_792x272(void)
+{
+  display_reinit_792x272();
+
+  const size_t linebytes = params->x_res_effective / 8;
+  const size_t halfbytes = DUAL_HALF_WIDTH / 4;
+  uint8_t* drawline_b = malloc(linebytes);
+  uint8_t* drawline_r = malloc(linebytes);
+  uint8_t* drawline_y = malloc(linebytes);
+  uint8_t* outbuf = malloc(params->x_res_effective / 4);
+
+  if(drawline_b == NULL || drawline_r == NULL || drawline_y == NULL || outbuf == NULL) {
+    oepl_hw_crash(DBG_DISPLAY, false, "Out of memory for rendering drawlines");
+  }
+
+  // Master drives the right half, slave the left half. Each controller wants
+  // its rows in the order 0, H-1, 1, H-2, ...
+  const uint8_t selects[2] = {DUAL_SELECT_MASTER, DUAL_SELECT_SLAVE};
+  const size_t offsets[2] = {halfbytes, 0};
+  const uint16_t h = params->y_res_effective;
+
+  for (int c = 0; c < 2; c++) {
+    EMIT_INSTRUCTION_VAR_DATA(DUAL_CMD_CASCADE_SELECT, {selects[c]});
+    oepl_display_driver_common_instruction(EPD_CMD_DISPLAY_START_TRANSMISSION_DTM1, true);
+    for (uint16_t k = 0; k < h / 2; k++) {
+      render_2bpp_line(k, drawline_b, drawline_r, drawline_y, outbuf);
+      oepl_display_driver_common_data(&outbuf[offsets[c]], halfbytes, true);
+      render_2bpp_line(h - 1 - k, drawline_b, drawline_r, drawline_y, outbuf);
+      oepl_display_driver_common_data(&outbuf[offsets[c]], halfbytes, k + 1 < h / 2);
+    }
+  }
+
+  DPRINTF("Rendering complete\n");
+
+  free(drawline_b);
+  free(drawline_r);
+  free(drawline_y);
+  free(outbuf);
+
+  DPRINTF("Turn on EPD power rails\n");
+  EMIT_INSTRUCTION_NO_DATA(EPD_CMD_POWER_ON);
+  sl_udelay_wait(500);
+  oepl_display_driver_wait_busy(2000, true);
+  oepl_display_driver_wait(10);
+
+  DPRINTF("Sending refresh\n");
+  EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_DISPLAY_REFRESH, {0x00});
+  sl_udelay_wait(2000);
+  oepl_display_driver_wait_busy(60000, true);
+
+  EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_POWER_OFF, {0x01});
+  // Stock FW sends deep sleep ~520 ms later without BUSY coming back
+  oepl_display_driver_wait(520);
+  EMIT_INSTRUCTION_STATIC_DATA(EPD_CMD_DEEP_SLEEP, {0xA5});
+  oepl_display_driver_wait(100);
+  oepl_display_driver_common_deactivate();
+
+  DPRINTF("Display sleeping\n");
 }
